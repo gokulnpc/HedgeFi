@@ -1,0 +1,237 @@
+"use client";
+
+import { SiteHeader } from "./components/site-header";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { motion } from "framer-motion";
+import { Footer } from "./components/Footer";
+import {
+  Zap,
+  Command,
+  Scale,
+  Bot,
+  Shield,
+  Sparkles,
+  Check,
+  Sprout,
+  TrendingUp,
+  Eye,
+} from "lucide-react";
+import GridBackground from "./components/GridBackground";
+import { useState, useMemo } from "react";
+import { MemeCoinMarketCap } from "./components/MemeCoinMarketCap";
+
+// Dummy data for trending coins (replace with your actual data)
+const trendingCoins = [
+  {
+    id: "doge",
+    name: "Dogecoin",
+    symbol: "DOGE",
+    price: 0.08,
+    marketCap: 10000000000,
+    change24h: 5.2,
+    volume24h: 500000000,
+  },
+  {
+    id: "shib",
+    name: "Shiba Inu",
+    symbol: "SHIB",
+    price: 0.00001,
+    marketCap: 5000000000,
+    change24h: -2.5,
+    volume24h: 250000000,
+  },
+  {
+    id: "pepe",
+    name: "Pepe",
+    symbol: "PEPE",
+    price: 0.000001,
+    marketCap: 1000000000,
+    change24h: 10.0,
+    volume24h: 100000000,
+  },
+  {
+    id: "wsm",
+    name: "Wall Street Memes",
+    symbol: "WSM",
+    price: 0.05,
+    marketCap: 500000000,
+    change24h: 3.0,
+    volume24h: 50000000,
+  },
+  {
+    id: "bonk",
+    name: "Bonk",
+    symbol: "BONK",
+    price: 0.000005,
+    marketCap: 250000000,
+    change24h: 7.5,
+    volume24h: 25000000,
+  },
+  {
+    id: "floppy",
+    name: "Floppy",
+    symbol: "FLOPPY",
+    price: 0.0000005,
+    marketCap: 100000000,
+    change24h: -1.0,
+    volume24h: 10000000,
+  },
+  {
+    id: "spongebob",
+    name: "SpongeBob",
+    symbol: "SPONGE",
+    price: 0.0000001,
+    marketCap: 50000000,
+    change24h: 12.0,
+    volume24h: 5000000,
+  },
+  {
+    id: "catge",
+    name: "Catge Coin",
+    symbol: "CATGE",
+    price: 0.00000005,
+    marketCap: 25000000,
+    change24h: -3.5,
+    volume24h: 2500000,
+  },
+  {
+    id: "dogelon",
+    name: "Dogelon Mars",
+    symbol: "ELON",
+    price: 0.00000001,
+    marketCap: 10000000,
+    change24h: 8.0,
+    volume24h: 1000000,
+  },
+  {
+    id: "mong",
+    name: "MongCoin",
+    symbol: "MONG",
+    price: 0.000000005,
+    marketCap: 5000000,
+    change24h: 4.5,
+    volume24h: 500000,
+  },
+];
+
+export default function Home(): JSX.Element {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [activeFilter, setActiveFilter] = useState<
+    "new" | "gainers" | "visited"
+  >("new");
+  const itemsPerPage = 5;
+
+  const filterOptions = [
+    { id: "new", label: "New", icon: Sprout },
+    { id: "gainers", label: "Gainers", icon: TrendingUp },
+    { id: "visited", label: "Most Visited", icon: Eye },
+  ] as const;
+
+  // Filter and sort coins based on active filter
+  const filteredCoins = useMemo(() => {
+    let filtered = [...trendingCoins];
+
+    switch (activeFilter) {
+      case "new":
+        // Sort by newest first (you might want to add a timestamp field to your coins)
+        filtered = filtered.sort((a, b) => b.marketCap - a.marketCap);
+        break;
+      case "gainers":
+        // Sort by 24h change
+        filtered = filtered.sort((a, b) => b.change24h - a.change24h);
+        break;
+      case "visited":
+        // Sort by volume as a proxy for "most visited"
+        filtered = filtered.sort((a, b) => b.volume24h - a.volume24h);
+        break;
+    }
+
+    return filtered;
+  }, [activeFilter]);
+
+  const totalPages = Math.ceil(filteredCoins.length / itemsPerPage);
+
+  const getCurrentPageItems = () => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredCoins.slice(start, end);
+  };
+
+  // Rest of your component code...
+
+  return (
+    <div className="relative flex min-h-screen flex-col">
+      <GridBackground />
+      <SiteHeader />
+      <main className="flex-1">
+        <section className="flex min-h-screen flex-col items-center justify-center space-y-10 py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="container flex flex-col items-center justify-center gap-6 text-center"
+          >
+            <motion.a
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              href="#"
+              className="inline-flex items-center rounded-full bg-muted px-4 py-1.5 text-sm font-medium"
+            >
+              🎉 <Separator className="mx-2 h-4" orientation="vertical" />{" "}
+              Introducing HedgeFi
+            </motion.a>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-4xl font-bold leading-tight tracking-tighter md:text-6xl lg:text-7xl lg:leading-[1.1]"
+            >
+              We See the Future,
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
+                So You Don't Have to Sell a Kidney
+              </span>
+            </motion.h1>
+            <motion.span
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="max-w-[750px] text-center text-lg text-muted-foreground sm:text-xl"
+            >
+              Your AI-powered crystal ball for meme coins. Predict trends, spot
+              rugs, and catch moonshots before they happen.
+            </motion.span>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="flex gap-4"
+            >
+              <Button size="lg" className="h-12 px-8">
+                Let's GOO!
+              </Button>
+              <Button size="lg" variant="outline" className="h-12 px-8">
+                View Demo
+              </Button>
+            </motion.div>
+          </motion.div>
+        </section>
+
+        <Separator className="my-12" />
+
+        <h2 className="text-3xl text-center font-bold leading-[1.1] sm:text-3xl md:text-5xl mb-10tracking-tight">
+          Today's Meme Coin{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
+            Prices by Market Cap
+          </span>
+        </h2>
+        <MemeCoinMarketCap />
+      </main>
+      <Footer />
+    </div>
+  );
+}
