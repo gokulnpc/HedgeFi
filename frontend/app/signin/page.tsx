@@ -1,46 +1,78 @@
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
-import { SiteHeader } from "../components/site-header"
-import { Footer } from "../components/footer"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react"
-import { MetamaskFox } from "../components/icons/metamask-fox"
+import { motion } from "framer-motion";
+import { SiteHeader } from "../components/site-header";
+import { Footer } from "../components/Footer";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react";
+import { MetamaskFox } from "../components/icons/metamask-fox";
+import { ethers } from "ethers";
+import { useState } from "react";
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 export default function SignIn() {
+  const [account, setAccount] = useState<string | null>(null);
+  const loginWithMetaMask = async () => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+
+      console.log("Connected address:", address);
+      setAccount(address);
+
+      const message = "Sign this message to verify your identity";
+      const signature = await signer.signMessage(message);
+      console.log("Signature:", signature);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const oauthProviders = [
     {
       name: "Google",
       icon: Mail,
       color: "hover:bg-red-500/10 hover:text-red-500 border-red-500/20",
+      onClick: () => console.log("Google login"),
     },
     {
       name: "Twitter",
       icon: Twitter,
       color: "hover:bg-blue-500/10 hover:text-blue-500 border-blue-500/20",
+      onClick: () => console.log("Twitter login"),
     },
     {
       name: "Apple",
       icon: Apple,
       color: "hover:bg-gray-500/10 hover:text-gray-300 border-gray-500/20",
+      onClick: () => console.log("Apple login"),
     },
     {
       name: "Github",
       icon: Github,
-      color: "hover:bg-purple-500/10 hover:text-purple-500 border-purple-500/20",
+      color:
+        "hover:bg-purple-500/10 hover:text-purple-500 border-purple-500/20",
+      onClick: () => console.log("GitHub login"),
     },
     {
       name: "Facebook",
       icon: Facebook,
       color: "hover:bg-blue-600/10 hover:text-blue-600 border-blue-600/20",
+      onClick: () => console.log("Facebook login"),
     },
     {
       name: "MetaMask",
       icon: MetamaskFox,
       color: "hover:bg-[#F6851B]/10 hover:text-[#F6851B] border-[#F6851B]/20",
+      onClick: loginWithMetaMask,
     },
-  ]
+  ];
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -54,8 +86,12 @@ export default function SignIn() {
             className="w-full max-w-md space-y-8"
           >
             <div className="text-center space-y-2">
-              <h1 className="text-4xl font-bold tracking-tight">Welcome Back</h1>
-              <p className="text-muted-foreground">Continue with your preferred login method</p>
+              <h1 className="text-4xl font-bold tracking-tight">
+                Welcome Back
+              </h1>
+              <p className="text-muted-foreground">
+                Continue with your preferred login method
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -64,6 +100,7 @@ export default function SignIn() {
                   key={provider.name}
                   variant="outline"
                   className={`h-14 relative overflow-hidden group ${provider.color}`}
+                  onClick={provider.onClick}
                 >
                   <div className="relative z-10 flex items-center justify-center gap-3 text-sm font-medium">
                     <provider.icon className="w-5 h-5" />
@@ -79,24 +116,35 @@ export default function SignIn() {
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or
+                </span>
               </div>
             </div>
 
             <div className="text-center space-y-4">
               <p className="text-sm text-muted-foreground">
                 Don&apos;t have an account?{" "}
-                <Link href="/register" className="font-medium text-primary hover:underline">
+                <Link
+                  href="/register"
+                  className="font-medium text-primary hover:underline"
+                >
                   Sign up
                 </Link>
               </p>
               <p className="text-xs text-muted-foreground">
                 By continuing, you agree to our{" "}
-                <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
+                <Link
+                  href="/terms"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
+                <Link
+                  href="/privacy"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
                   Privacy Policy
                 </Link>
                 .
@@ -107,6 +155,5 @@ export default function SignIn() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
-
