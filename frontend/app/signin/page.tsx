@@ -8,7 +8,8 @@ import Link from "next/link";
 import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react";
 import { MetamaskFox } from "../components/icons/metamask-fox";
 import { ethers } from "ethers";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 declare global {
   interface Window {
@@ -17,8 +18,22 @@ declare global {
 }
 export default function SignIn() {
   const [account, setAccount] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
+
+  // Check if already logged in
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [router]);
+
   const loginWithMetaMask = async () => {
     try {
+      // Always request accounts to prompt Metamask confirmation
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
@@ -29,6 +44,18 @@ export default function SignIn() {
       const message = "Sign this message to verify your identity";
       const signature = await signer.signMessage(message);
       console.log("Signature:", signature);
+
+      // Save authentication state to localStorage
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userAddress", address);
+
+      // Set logged in state to show success message
+      setIsLoggedIn(true);
+
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
     } catch (error) {
       console.error(error);
     }
@@ -110,6 +137,22 @@ export default function SignIn() {
                 </Button>
               ))}
             </div>
+
+            {/* Show login status */}
+            {account && (
+              <div className="text-center mt-4">
+                {isLoggedIn ? (
+                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500">
+                    <p className="font-medium">Logged In Successfully!</p>
+                    <p className="text-sm mt-1">Redirecting to dashboard...</p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-green-500">
+                    Connected as: {account}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">

@@ -192,6 +192,12 @@ const getWatchlistFromStorage = (): string[] => {
   if (typeof window === "undefined") return [];
 
   try {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    if (!isAuthenticated) {
+      return []; // Return empty array if not authenticated
+    }
+
     const saved = localStorage.getItem(WATCHLIST_STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
   } catch (error) {
@@ -204,6 +210,12 @@ const saveWatchlistToStorage = (watchlist: string[]) => {
   if (typeof window === "undefined") return;
 
   try {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    if (!isAuthenticated) {
+      return; // Don't save if not authenticated
+    }
+
     localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlist));
   } catch (error) {
     console.error("Failed to save watchlist to storage:", error);
@@ -259,6 +271,39 @@ export function MemeCoinMarketCap({
   }, [favorites, isLoaded]);
 
   const handleFavoriteToggle = (coinId: string) => {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+
+    if (!isAuthenticated) {
+      // Show inline login warning instead of alert
+      const warningElement = document.createElement("div");
+      warningElement.className =
+        "fixed bottom-4 right-4 bg-yellow-500/90 text-black p-4 rounded-lg shadow-lg z-50 flex items-center gap-2";
+      warningElement.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span>Please log in to add tokens to your watchlist</span>
+      `;
+      document.body.appendChild(warningElement);
+
+      // Remove the warning after 3 seconds
+      setTimeout(() => {
+        warningElement.classList.add(
+          "opacity-0",
+          "transition-opacity",
+          "duration-300"
+        );
+        setTimeout(() => {
+          document.body.removeChild(warningElement);
+        }, 300);
+      }, 3000);
+
+      return;
+    }
+
     setFavorites((prev) => {
       const newFavorites = prev.includes(coinId)
         ? prev.filter((id) => id !== coinId)

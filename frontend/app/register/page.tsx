@@ -8,7 +8,8 @@ import Link from "next/link";
 import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react";
 import { MetamaskFox } from "../components/icons/metamask-fox";
 import { ethers } from "ethers";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Add TypeScript declaration for window.ethereum
 declare global {
@@ -19,8 +20,22 @@ declare global {
 
 export default function Register() {
   const [account, setAccount] = useState<string | null>(null);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const router = useRouter();
+
+  // Check if already logged in
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [router]);
+
   const loginWithMetaMask = async () => {
     try {
+      // Always request accounts to prompt Metamask confirmation
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
@@ -31,10 +46,23 @@ export default function Register() {
       const message = "Sign this message to verify your identity";
       const signature = await signer.signMessage(message);
       console.log("Signature:", signature);
+
+      // Save authentication state to localStorage
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userAddress", address);
+
+      // Set registered state to show success message
+      setIsRegistered(true);
+
+      // Redirect to settings page after a short delay
+      setTimeout(() => {
+        router.push("/settings");
+      }, 2000);
     } catch (error) {
       console.error(error);
     }
   };
+
   const oauthProviders = [
     {
       name: "Google",
@@ -113,8 +141,19 @@ export default function Register() {
             </div>
             {/* Show connected MetaMask account */}
             {account && (
-              <div className="text-center text-sm text-green-500 mt-4">
-                Connected as: {account}
+              <div className="text-center mt-4">
+                {isRegistered ? (
+                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500">
+                    <p className="font-medium">Signed Up Successfully!</p>
+                    <p className="text-sm mt-1">
+                      Redirecting to settings page to complete your profile...
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-green-500">
+                    Connected as: {account}
+                  </div>
+                )}
               </div>
             )}
 

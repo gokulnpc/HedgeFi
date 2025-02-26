@@ -14,6 +14,8 @@ import {
   TextIcon as Telegram,
   Clock,
   TrendingUp,
+  Filter,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   Pagination,
@@ -32,6 +34,9 @@ import { Badge } from "@/components/ui/badge";
 import { MarketFilters } from "../components/MarketFilters";
 import type { Chain, FilterOption, MemeToken } from "../components/types";
 import Marquee from "react-fast-marquee";
+import { AppLayout } from "../components/app-layout";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const chains: Chain[] = [
   {
@@ -375,9 +380,8 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
 
 export default function MarketplacePage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"latest" | "trending">(
-    "latest"
-  );
+  const [activeFilter, setActiveFilter] =
+    useState<FilterOption["id"]>("latest");
   const [selectedChain, setSelectedChain] = useState<Chain | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -414,36 +418,48 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <AppLayout showFooter={false}>
       <GridBackground />
-      <SiteHeader />
-      <main className="flex-1 pt-24">
-        <div className="container max-w-[1600px] mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-12"
-          >
-            <h1 className="text-4xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
-              Marketplace
-            </h1>
-            <p className="text-muted-foreground">
-              Discover and trade the latest meme tokens
-            </p>
-          </motion.div>
+      <div className="relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="container py-8"
+        >
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-4xl font-bold">
+                Meme Token{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
+                  Marketplace
+                </span>
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Discover and invest in the latest meme tokens
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search tokens..."
+                  className="pl-8 w-[200px] md:w-[300px]"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" size="icon">
+                <Filter className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon">
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by name or symbol..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12"
-              />
-            </div>
             <MarketFilters
               chains={chains}
               filterOptions={filterOptions}
@@ -535,9 +551,8 @@ export default function MarketplacePage() {
               </Pagination>
             </div>
           )}
-        </div>
-      </main>
-      <Footer />
-    </div>
+        </motion.div>
+      </div>
+    </AppLayout>
   );
 }

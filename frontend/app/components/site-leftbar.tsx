@@ -130,6 +130,25 @@ export function SiteLeftbar() {
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "dashboard",
   ]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = () => {
+      const savedAuth = localStorage.getItem("isAuthenticated");
+      setIsAuthenticated(savedAuth === "true");
+    };
+
+    // Check on initial load
+    checkAuth();
+
+    // Listen for storage changes (for cross-tab synchronization)
+    window.addEventListener("storage", checkAuth);
+
+    return () => {
+      window.removeEventListener("storage", checkAuth);
+    };
+  }, []);
 
   // Determine active section and expanded sections based on current path
   useEffect(() => {
@@ -158,6 +177,8 @@ export function SiteLeftbar() {
       }
     } else if (pathname.includes("/settings")) {
       setActiveSection("settings");
+    } else if (pathname.includes("/watchlist")) {
+      setActiveSection("watchlist");
     }
   }, [pathname, expandedSections]);
 
@@ -190,6 +211,11 @@ export function SiteLeftbar() {
       href: "/chatbot",
     },
   ];
+
+  // If not authenticated, don't render the sidebar
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="w-[280px] h-[calc(100vh-64px)] overflow-y-auto bg-gray-900/50 backdrop-blur-sm border-r border-green-500/10 py-4">
@@ -310,7 +336,7 @@ export function SiteLeftbar() {
         <NavItem
           icon={<Bookmark size={20} />}
           label="Watchlist"
-          href="/my-watchlist"
+          href="/watchlist"
           isActive={activeSection === "watchlist"}
           onToggle={() => setActiveSection("watchlist")}
         />
