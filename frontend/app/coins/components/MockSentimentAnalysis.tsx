@@ -44,7 +44,7 @@ export function MockSentimentAnalysisCard({ coinId }: { coinId: string }) {
       coinId={coinId}
       onAnalyze={!showMockData ? mockAnalyzeSentiment : undefined}
       isLoading={isLoading}
-      initialData={currentData}
+      initialData={currentData || undefined}
     />
   );
 }

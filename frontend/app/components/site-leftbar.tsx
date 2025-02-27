@@ -271,52 +271,6 @@ export function SiteLeftbar() {
           )}
         </AnimatePresence>
 
-        {/* Coins Section */}
-        <NavItem
-          icon={<Coins size={20} />}
-          label="Coins"
-          href="/coins"
-          hasSubItems={true}
-          isActive={activeSection === "coins"}
-          isExpanded={expandedSections.includes("coins")}
-          onToggle={() => toggleSection("coins")}
-        />
-
-        <AnimatePresence>
-          {expandedSections.includes("coins") && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-1 pb-1">
-                <SubNavItem
-                  label="All Coins"
-                  href="/coins"
-                  isActive={pathname === "/coins"}
-                />
-                <SubNavItem
-                  label="Trending"
-                  href="/coins/trending"
-                  isActive={pathname === "/coins/trending"}
-                />
-                <SubNavItem
-                  label="New Listings"
-                  href="/coins/new"
-                  isActive={pathname === "/coins/new"}
-                />
-                <SubNavItem
-                  label="Top Gainers"
-                  href="/coins/gainers"
-                  isActive={pathname === "/coins/gainers"}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Hedge Bot Section */}
         <NavItem
           icon={<Bot size={20} />}

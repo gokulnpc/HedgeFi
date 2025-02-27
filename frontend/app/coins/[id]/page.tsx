@@ -192,7 +192,7 @@ export default function CoinPage() {
         <main
           className={`flex-1 overflow-y-auto ${
             isAuthenticated ? "ml-[280px]" : ""
-          } ${coinData ? "pr-[400px]" : ""}`}
+          } ${coinData ? "pr-[500px]" : ""}`}
         >
           <div className="container p-4">
             {loading ? (

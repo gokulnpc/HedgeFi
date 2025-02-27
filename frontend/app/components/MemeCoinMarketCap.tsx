@@ -288,7 +288,7 @@ export function MemeCoinMarketCap({
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left py-4 px-4"></th> {/* Star column */}
+                <th className="text-left py-4 px-4"></th>
                 <th className="text-left py-4 px-4">#</th>
                 <th className="text-left py-4 px-4">Name</th>
                 <th className="text-right py-4 px-4">Price</th>
@@ -401,8 +401,8 @@ export function MemeCoinMarketCap({
                           {(coin.volume24h / coin.price).toLocaleString(
                             undefined,
                             { maximumFractionDigits: 2 }
-                          )}{" "}
-                          {coin.symbol}
+                          )}
+                          {" " + coin.symbol}
                         </span>
                       </div>
                     </td>

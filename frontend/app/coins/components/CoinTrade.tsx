@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter } from "next/navigation";
+import AITradeRecommendation from "./AITradeRecommendation";
 
 interface CoinTradeProps {
   symbol: string;
@@ -25,8 +26,29 @@ const CoinTrade = ({
     setTotal(newAmount);
   };
 
+  const handleApplyRecommendation = () => {
+    if (!isAuthenticated) {
+      handleTradeAction();
+      return;
+    }
+    // Apply the recommendation values
+    setAmount("100");
+    setTotal("100");
+  };
+
   return (
     <div className="space-y-4">
+      {/* AI Trade Recommendation - Moved to top */}
+      <AITradeRecommendation
+        symbol={symbol}
+        recommendation="BUY"
+        analysis="Based on current market analysis, a buying opportunity is present with a favorable risk-reward ratio."
+        entry={0.00123}
+        target={0.00129}
+        stopLoss={0.0012}
+        onApply={handleApplyRecommendation}
+      />
+
       <Tabs defaultValue="buy">
         <TabsList className="grid grid-cols-2 mb-4">
           <TabsTrigger value="buy">Buy</TabsTrigger>
