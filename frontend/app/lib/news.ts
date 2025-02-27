@@ -1,16 +1,13 @@
-import { NextResponse } from "next/server";
-
-export async function GET() {
+export async function fetchNewsItems() {
   const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY;
-  console.log(apiKey);
 
   if (!apiKey) {
-    return NextResponse.json({ error: "Invalid API KEY" }, { status: 401 });
+    throw { error: "Invalid API KEY", status: 401 };
   }
 
   try {
     const searchTerm = "meme+coin";
-    const filterTerm = "meme coin"
+    const filterTerm = "meme coin";
     const [everythingResponse, headlinesResponse] = await Promise.all([
       fetch(
         `https://newsapi.org/v2/everything?q=${searchTerm}&sortBy=relevancy&language=en&pageSize=50&apiKey=${apiKey}`
@@ -24,8 +21,7 @@ export async function GET() {
       everythingResponse.json(),
       headlinesResponse.json(),
     ]);
-    console.log(everythingData);
-    console.log(headlinesData);
+
     // Combine and filter articles
     const allArticles = [
       ...(headlinesData.articles || []),
@@ -35,7 +31,7 @@ export async function GET() {
         article.title &&
         article.description &&
         (article.title.toLowerCase().includes(filterTerm.toLowerCase()) ||
-          article.description.toLowerCase().includes(filterTerm.toLowerCase()))
+          article.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     // Remove duplicates and get up to 15 articles
@@ -43,10 +39,10 @@ export async function GET() {
       new Map(allArticles.map((article) => [article.title, article])).values()
     ).slice(0, 6);
 
-    console.log("response", uniqueArticles)
+    console.log("response", uniqueArticles);
 
-    return NextResponse.json(uniqueArticles);
+    return uniqueArticles;
   } catch (error) {
-    return NextResponse.json({ error: "Failed to load news" }, { status: 500 });
+    return { error: "Failed to load news", status: 500 };
   }
 }

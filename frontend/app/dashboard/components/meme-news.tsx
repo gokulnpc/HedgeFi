@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { NewsItem } from "@/app/types/news";
+import {fetchNewsItems} from "@/app/lib/news"
 
 export function MemeNews() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -12,9 +13,7 @@ export function MemeNews() {
     const fetchNews = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("/api/news");
-        const data = await response.json();
-
+        const data = await fetchNewsItems();
         // Check if data is an array, otherwise use empty array
         if (Array.isArray(data)) {
           setNews(data);
@@ -53,11 +52,11 @@ export function MemeNews() {
       {/* News List */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="text-center py-4">Loading news...</div>
+          <div className="py-4 text-center">Loading news...</div>
         ) : error ? (
-          <div className="text-center py-4 text-red-400">{error}</div>
+          <div className="py-4 text-center text-red-400">{error}</div>
         ) : news.length === 0 ? (
-          <div className="text-center py-4">No news articles available</div>
+          <div className="py-4 text-center">No news articles available</div>
         ) : (
           news.map((item, index) => (
             <div
