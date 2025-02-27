@@ -32,6 +32,9 @@ import router from "next/router";
 import TopHolders, { mockHolders } from "../components/TopHolders";
 import CoinsRightBar from "../components/CoinsRightBar";
 
+// import fetching top holders
+import { fetchTopHolders } from "@/app/lib/topHolder";
+
 // Types for enhanced features
 type TimeRange = "5M" | "1H" | "4H" | "24H";
 
@@ -92,7 +95,7 @@ const TitleMarquee: React.FC<{ text: string }> = ({ text }) => {
         direction="left"
         pauseOnHover={true}
       >
-        <span className="text-3xl font-pixel text-green-400">{text}</span>
+        <span className="text-3xl text-green-400 font-pixel">{text}</span>
       </Marquee>
     </div>
   );
@@ -178,7 +181,7 @@ export default function CoinPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex flex-col min-h-screen">
       <GridBackground />
       <SiteHeader />
 
@@ -193,8 +196,8 @@ export default function CoinPage() {
         >
           <div className="container p-4">
             {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-400/30"></div>
+              <div className="flex items-center justify-center h-64">
+                <div className="w-12 h-12 border-t-2 border-b-2 rounded-full animate-spin border-gray-400/30"></div>
               </div>
             ) : coinData ? (
               <div className="grid grid-cols-12 gap-6">
@@ -203,7 +206,7 @@ export default function CoinPage() {
                   {/* Chart Card */}
                   <Card className="mb-6 border border-gray-400/30">
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-xl font-bold flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-xl font-bold">
                         <span>{coinData.symbol}/USDT</span>
                         <span className="text-sm text-green-400">(+8.56%)</span>
                       </CardTitle>
@@ -224,7 +227,7 @@ export default function CoinPage() {
                         ))}
                       </div>
                     </CardHeader>
-                    <CardContent className="p-0 w-full">
+                    <CardContent className="w-full p-0">
                       <TradingViewWidget symbol={coinData.symbol} />
                     </CardContent>
                   </Card>
@@ -297,8 +300,8 @@ export default function CoinPage() {
                 )}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Coin not found</h2>
+              <div className="py-12 text-center">
+                <h2 className="mb-4 text-2xl font-bold">Coin not found</h2>
                 <p className="mb-6">
                   The coin you're looking for doesn't exist or has been removed.
                 </p>
