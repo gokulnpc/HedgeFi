@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY;
-  //   console.log(apiKey);
+  console.log(apiKey);
 
   if (!apiKey) {
     return NextResponse.json({ error: "Invalid API KEY" }, { status: 401 });
@@ -10,6 +10,7 @@ export async function GET() {
 
   try {
     const searchTerm = "meme+coin";
+    const filterTerm = "meme coin"
     const [everythingResponse, headlinesResponse] = await Promise.all([
       fetch(
         `https://newsapi.org/v2/everything?q=${searchTerm}&sortBy=relevancy&language=en&pageSize=50&apiKey=${apiKey}`
@@ -23,7 +24,8 @@ export async function GET() {
       everythingResponse.json(),
       headlinesResponse.json(),
     ]);
-
+    console.log(everythingData);
+    console.log(headlinesData);
     // Combine and filter articles
     const allArticles = [
       ...(headlinesData.articles || []),
@@ -32,8 +34,8 @@ export async function GET() {
       (article) =>
         article.title &&
         article.description &&
-        (article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          article.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        (article.title.toLowerCase().includes(filterTerm.toLowerCase()) ||
+          article.description.toLowerCase().includes(filterTerm.toLowerCase()))
     );
 
     // Remove duplicates and get up to 15 articles

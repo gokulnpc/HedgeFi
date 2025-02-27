@@ -12,6 +12,13 @@ const nextConfig = {
       "cdn.jsdelivr.net",
       "assets.coingecko.com",
       "cryptologos.cc",
+      "newsapi.org",
+      "www.google.com",
+      "media.newyorker.com",
+      "i.insider.com",
+      "media.zenfs.com",
+      "theintercept.com",
+      "imageio.forbes.com"
     ],
   },
 };

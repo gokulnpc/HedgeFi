@@ -38,6 +38,10 @@ export function MemeNews() {
     fetchNews();
   }, []);
 
+  const myLoader = ({ src }: { src: string }) => {
+    return src;
+  };
+
   return (
     <div className="mt-6 space-y-6">
       <h1 className="text-4xl font-bold">
@@ -46,25 +50,6 @@ export function MemeNews() {
           Highlights
         </span>
       </h1>
-
-      {/* Featured Article */}
-      <div className="relative h-48 mb-6 overflow-hidden rounded-lg">
-        <Image
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202025-02-23%20at%2002.57.37-piFu7D49oBzLogWJtQyt4WaDjtHPQs.png"
-          alt="This week in Meme Coins"
-          fill
-          className="object-cover"
-        />
-        <div className="absolute inset-0 flex flex-col justify-end p-4 bg-gradient-to-t from-black/80 to-transparent">
-          <h3 className="text-lg font-semibold text-white">
-            This week in Meme Coins
-          </h3>
-          <p className="text-sm text-gray-200">
-            BSC Bumps, (Does) Portnoy Not Like Us?
-          </p>
-        </div>
-      </div>
-
       {/* News List */}
       <div className="space-y-4">
         {isLoading ? (
@@ -94,6 +79,7 @@ export function MemeNews() {
               <div className="relative flex-shrink-0 w-16 h-16 overflow-hidden rounded-md">
                 <Image
                   src={item.urlToImage || "/placeholder.svg"}
+                  loader={myLoader}
                   alt={item.title}
                   fill
                   className="object-cover"
