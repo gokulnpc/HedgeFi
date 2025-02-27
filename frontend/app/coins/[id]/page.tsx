@@ -6,7 +6,17 @@ import dynamic from "next/dynamic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wallet, Activity, Users } from "lucide-react";
+import {
+  Wallet,
+  Activity,
+  Users,
+  MessageSquare,
+  BarChart2,
+  PieChart,
+  Globe,
+  Layers,
+  Brain,
+} from "lucide-react";
 import { SiteHeader } from "@/app/components/site-header";
 import { Footer } from "@/app/components/Footer";
 import GridBackground from "@/app/components/GridBackground";
@@ -15,6 +25,34 @@ import Marquee from "react-fast-marquee";
 
 // Import the mock coin data
 import { trendingCoins, type Coin } from "@/app/data/mockCoins";
+import router from "next/router";
+
+// Import the TopHolders component
+import TopHolders, { mockHolders } from "../components/TopHolders";
+
+// Types for enhanced features
+type TimeRange = "5M" | "1H" | "4H" | "24H";
+
+type VolumeData = {
+  timeRange: TimeRange;
+  buyVolume: number;
+  sellVolume: number;
+  netChange: number;
+};
+
+type TraderAnalytics = {
+  totalTraders: number;
+  activeTraders24h: number;
+  avgTradeSize: number;
+  topTrader: string;
+};
+
+type LiquidityData = {
+  totalLiquidity: number;
+  liquidityChange24h: number;
+  topPool: string;
+  poolCount: number;
+};
 
 const TradingViewWidget = dynamic(
   () => import("../components/trading-view-widget"),
@@ -40,44 +78,6 @@ const getTradingViewWidget = (pool_id: string) => {
 
 const timeRanges = ["6H", "1D", "7D", "30D"];
 
-// Add this type definition near the top of the file
-type Holder = {
-  rank: number;
-  address: string;
-  liquidityPercentage: number;
-};
-
-// Update the mockHolders array with 10 entries
-const mockHolders: Holder[] = [
-  { rank: 1, address: "0x1234...5678", liquidityPercentage: 15.5 },
-  { rank: 2, address: "0x8765...4321", liquidityPercentage: 12.3 },
-  { rank: 3, address: "0x9876...1234", liquidityPercentage: 8.7 },
-  { rank: 4, address: "0x4567...8901", liquidityPercentage: 6.4 },
-  { rank: 5, address: "0x3456...7890", liquidityPercentage: 5.2 },
-  { rank: 6, address: "0x2345...6789", liquidityPercentage: 4.1 },
-  { rank: 7, address: "0x7890...2345", liquidityPercentage: 3.8 },
-  { rank: 8, address: "0x6789...3456", liquidityPercentage: 3.2 },
-  { rank: 9, address: "0x5678...4567", liquidityPercentage: 2.9 },
-  { rank: 10, address: "0x4321...5678", liquidityPercentage: 2.5 },
-];
-
-const AddressMarquee: React.FC<{ text: string }> = ({ text }) => {
-  return (
-    <div className="w-[300px] bg-gray-800 rounded-lg px-2 py-1">
-      <Marquee
-        gradient={false}
-        speed={20}
-        delay={2}
-        play={true}
-        direction="left"
-        pauseOnHover={true}
-      >
-        <span className="font-clean text-green-400">{text}</span>
-      </Marquee>
-    </div>
-  );
-};
-
 // Add this new component for the title
 const TitleMarquee: React.FC<{ text: string }> = ({ text }) => {
   return (
@@ -96,6 +96,15 @@ const TitleMarquee: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
+// Import the components
+import MarketStatsTab from "../components/MarketStatsTab";
+import TradersTab from "../components/TradersTab";
+import LiquidityTab from "../components/LiquidityTab";
+import BubbleMapTab from "../components/BubbleMapTab";
+import ActiveWalletsTab from "../components/ActiveWalletsTab";
+import CoinTrade from "../components/CoinTrade";
+import CoinChat from "../components/CoinChat";
+
 export default function CoinPage() {
   const { id } = useParams();
   const [amount, setAmount] = useState("");
@@ -105,6 +114,19 @@ export default function CoinPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [coinData, setCoinData] = useState<Coin | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTimeframe, setSelectedTimeframe] = useState("1D");
+  const [showChat, setShowChat] = useState(true);
+
+  // Mock volume data
+  const volumeData: VolumeData[] = [
+    { timeRange: "5M", buyVolume: 1.4, sellVolume: 1.4, netChange: -2.07 },
+    { timeRange: "1H", buyVolume: 7.8, sellVolume: 7.8, netChange: -2.03 },
+    { timeRange: "4H", buyVolume: 15.2, sellVolume: 14.8, netChange: -1.69 },
+    { timeRange: "24H", buyVolume: 45.6, sellVolume: 42.4, netChange: 8.04 },
+  ];
+
+  // Available timeframes
+  const timeframes = ["6H", "12H", "1D", "3D", "7D", "30D"];
 
   useEffect(() => {
     // Check authentication status on client side
@@ -146,13 +168,6 @@ export default function CoinPage() {
     setTotal(newAmount);
   };
 
-  // Mock data for top holders
-  const topHolders = [
-    { rank: 1, address: "0x1234...5678", percentage: 50 },
-    { rank: 2, address: "0x8765...4321", percentage: 25 },
-    { rank: 3, address: "0x9876...1234", percentage: 16.67 },
-  ];
-
   // Mock market stats
   const marketStats = {
     price: "$0.00123",
@@ -167,203 +182,135 @@ export default function CoinPage() {
       <SiteHeader />
 
       <main className="flex-1 pt-20">
-        <div className="container mx-auto p-4 space-y-6">
+        <div className="container mx-auto p-4">
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-400/30"></div>
             </div>
           ) : coinData ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Chart Section */}
-              <div className="lg:col-span-2">
-                <Card>
+            <div className="grid grid-cols-12 gap-6">
+              {/* Left Section - Chart and Analytics */}
+              <div className="col-span-9">
+                {/* Chart Card */}
+                <Card className="mb-6 border border-gray-400/30">
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-xl font-bold">
-                      {coinData.symbol}/USDT
+                    <CardTitle className="text-xl font-bold flex items-center gap-2">
+                      <span>{coinData.symbol}/USDT</span>
+                      <span className="text-sm text-green-400">(+8.56%)</span>
                     </CardTitle>
                     <div className="flex gap-2">
-                      {["1H", "4H", "1D", "1W"].map((timeframe) => (
-                        <Button key={timeframe} variant="outline" size="sm">
+                      {timeframes.map((timeframe) => (
+                        <Button
+                          key={timeframe}
+                          variant={
+                            selectedTimeframe === timeframe
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => setSelectedTimeframe(timeframe)}
+                        >
                           {timeframe}
                         </Button>
                       ))}
                     </div>
                   </CardHeader>
-                  <CardContent className="p-0 h-[500px]">
+                  <CardContent className="p-0 h-[600px]">
                     <TradingViewWidget symbol={coinData.symbol} />
                   </CardContent>
                 </Card>
-              </div>
 
-              {/* Trading Interface */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Wallet className="h-5 w-5" />
-                      Trading
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs defaultValue="buy">
-                      <TabsList className="grid grid-cols-2 mb-4">
-                        <TabsTrigger value="buy">Buy</TabsTrigger>
-                        <TabsTrigger value="sell">Sell</TabsTrigger>
+                {/* Analytics Tabs */}
+                <Card className="border border-gray-400/30">
+                  <CardContent className="p-4">
+                    <Tabs defaultValue="market-stats">
+                      <TabsList className="grid grid-cols-6 mb-4">
+                        <TabsTrigger value="market-stats">
+                          <Globe className="w-4 h-4 mr-2" />
+                          Market Stats
+                        </TabsTrigger>
+                        <TabsTrigger value="holders">
+                          <Users className="w-4 h-4 mr-2" />
+                          Top Holders
+                        </TabsTrigger>
+                        <TabsTrigger value="traders">
+                          <Activity className="w-4 h-4 mr-2" />
+                          Traders
+                        </TabsTrigger>
+                        <TabsTrigger value="liquidity">
+                          <Layers className="w-4 h-4 mr-2" />
+                          Liquidity
+                        </TabsTrigger>
+                        <TabsTrigger value="bubble-map">
+                          <PieChart className="w-4 h-4 mr-2" />
+                          Bubble Map
+                        </TabsTrigger>
+                        <TabsTrigger value="wallets">
+                          <Wallet className="w-4 h-4 mr-2" />
+                          Active Wallets
+                        </TabsTrigger>
                       </TabsList>
 
-                      <TabsContent value="buy">
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-4 gap-2">
-                            {[25, 50, 75, 100].map((percent) => (
-                              <Button
-                                key={percent}
-                                variant="outline"
-                                onClick={() => handlePercentageClick(percent)}
-                              >
-                                {percent}%
-                              </Button>
-                            ))}
-                          </div>
-                          <Input
-                            type="number"
-                            placeholder="Amount"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Total USDT"
-                            value={total}
-                            onChange={(e) => setTotal(e.target.value)}
-                          />
-                          <Button
-                            className="w-full"
-                            variant="default"
-                            onClick={handleTradeAction}
-                          >
-                            {isAuthenticated
-                              ? `Buy ${coinData.symbol}`
-                              : "Login to Trade"}
-                          </Button>
-                        </div>
+                      {/* Tab Content */}
+                      <TabsContent value="market-stats">
+                        <MarketStatsTab
+                          coinData={coinData}
+                          volumeData={volumeData}
+                        />
                       </TabsContent>
-
-                      <TabsContent value="sell">
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-4 gap-2">
-                            {[25, 50, 75, 100].map((percent) => (
-                              <Button
-                                key={percent}
-                                variant="outline"
-                                onClick={() => handlePercentageClick(percent)}
-                              >
-                                {percent}%
-                              </Button>
-                            ))}
-                          </div>
-                          <Input
-                            type="number"
-                            placeholder="Amount"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Total USDT"
-                            value={total}
-                            onChange={(e) => setTotal(e.target.value)}
-                          />
-                          <Button
-                            className="w-full"
-                            variant="destructive"
-                            onClick={handleTradeAction}
-                          >
-                            {isAuthenticated
-                              ? `Sell ${coinData.symbol}`
-                              : "Login to Trade"}
-                          </Button>
-                        </div>
+                      <TabsContent value="holders">
+                        <TopHolders holders={mockHolders} />
+                      </TabsContent>
+                      <TabsContent value="traders">
+                        <TradersTab />
+                      </TabsContent>
+                      <TabsContent value="liquidity">
+                        <LiquidityTab />
+                      </TabsContent>
+                      <TabsContent value="bubble-map">
+                        <BubbleMapTab />
+                      </TabsContent>
+                      <TabsContent value="wallets">
+                        <ActiveWalletsTab />
                       </TabsContent>
                     </Tabs>
                   </CardContent>
                 </Card>
+              </div>
 
-                {/* Market Stats */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Activity className="h-5 w-5" />
-                      Market Stats
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Price</p>
-                      <p className="text-lg font-bold">
-                        ${coinData.price.toFixed(8)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        24h Change
-                      </p>
-                      <p
-                        className={`text-lg font-bold ${
-                          coinData.change24h > 0
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }`}
+              {/* Right Section - Trading/Chat Interface */}
+              <div className="col-span-3 space-y-6">
+                <Card className="border border-gray-400/30">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div className="flex gap-2">
+                      <Button
+                        variant={showChat ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => setShowChat(false)}
                       >
-                        {coinData.change24h > 0 ? "+" : ""}
-                        {coinData.change24h}%
-                      </p>
+                        <Wallet className="w-4 h-4 mr-2" />
+                        Trade
+                      </Button>
+                      <Button
+                        variant={showChat ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowChat(true)}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Chat
+                      </Button>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        24h Volume
-                      </p>
-                      <p className="text-lg font-bold">
-                        ${coinData.volume24h.toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Market Cap
-                      </p>
-                      <p className="text-lg font-bold">
-                        ${coinData.marketCap.toLocaleString()}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Top Holders */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Top Holders
-                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      {mockHolders.map((holder) => (
-                        <div
-                          key={holder.rank}
-                          className="flex justify-between items-center"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                              #{holder.rank}
-                            </span>
-                            <span className="text-sm">{holder.address}</span>
-                          </div>
-                          <span className="text-sm font-bold">
-                            {holder.liquidityPercentage.toFixed(2)}%
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    {showChat ? (
+                      <CoinChat />
+                    ) : (
+                      <CoinTrade
+                        symbol={coinData.symbol}
+                        isAuthenticated={isAuthenticated}
+                        handleTradeAction={handleTradeAction}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </div>
