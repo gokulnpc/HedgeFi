@@ -9,7 +9,8 @@ import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react";
 import { MetamaskFox } from "../components/icons/metamask-fox";
 import { ethers } from "ethers";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Cookies from "js-cookie";
 
 declare global {
   interface Window {
@@ -20,14 +21,16 @@ export default function SignIn() {
   const [account, setAccount] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "/dashboard";
 
   // Check if already logged in
   useEffect(() => {
     const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
     if (isAuthenticated) {
-      router.push("/dashboard");
+      router.push(redirectPath);
     }
-  }, [router]);
+  }, [router, redirectPath]);
 
   const loginWithMetaMask = async () => {
     try {
@@ -49,16 +52,33 @@ export default function SignIn() {
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userAddress", address);
 
+      // Set a cookie for server-side authentication (middleware)
+      // Set to expire in 7 days
+      Cookies.set("isAuthenticated", "true", { expires: 7, path: "/" });
+
       // Set logged in state to show success message
       setIsLoggedIn(true);
 
-      // Redirect to dashboard after a short delay
+      // Redirect to dashboard or the original requested page after a short delay
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push(redirectPath);
       }, 2000);
     } catch (error) {
       console.error(error);
     }
+  };
+
+  // Function for email/password login (mock)
+  const handleEmailLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Mock successful login
+    localStorage.setItem("isAuthenticated", "true");
+    Cookies.set("isAuthenticated", "true", { expires: 7, path: "/" });
+    setIsLoggedIn(true);
+
+    setTimeout(() => {
+      router.push(redirectPath);
+    }, 2000);
   };
 
   const oauthProviders = [
@@ -119,6 +139,11 @@ export default function SignIn() {
               <p className="text-muted-foreground">
                 Continue with your preferred login method
               </p>
+              {searchParams.has("redirect") && (
+                <p className="text-sm text-amber-500">
+                  You need to log in to access this page
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,7 +169,7 @@ export default function SignIn() {
                 {isLoggedIn ? (
                   <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500">
                     <p className="font-medium">Logged In Successfully!</p>
-                    <p className="text-sm mt-1">Redirecting to dashboard...</p>
+                    <p className="text-sm mt-1">Redirecting...</p>
                   </div>
                 ) : (
                   <div className="text-sm text-green-500">

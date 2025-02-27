@@ -9,7 +9,8 @@ import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react";
 import { MetamaskFox } from "../components/icons/metamask-fox";
 import { ethers } from "ethers";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Cookies from "js-cookie";
 
 // Add TypeScript declaration for window.ethereum
 declare global {
@@ -22,14 +23,16 @@ export default function Register() {
   const [account, setAccount] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Check if already logged in
   useEffect(() => {
     const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
     if (isAuthenticated) {
-      router.push("/dashboard");
+      const redirectPath = searchParams.get("redirect") || "/dashboard";
+      router.push(redirectPath);
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   const loginWithMetaMask = async () => {
     try {
@@ -50,6 +53,10 @@ export default function Register() {
       // Save authentication state to localStorage
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userAddress", address);
+
+      // Set a cookie for server-side authentication (middleware)
+      // Set to expire in 7 days
+      Cookies.set("isAuthenticated", "true", { expires: 7, path: "/" });
 
       // Set registered state to show success message
       setIsRegistered(true);

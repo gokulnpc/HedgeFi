@@ -37,6 +37,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
+import Cookies from "js-cookie";
+import { useRouter } from "next/navigation";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -46,6 +48,7 @@ export function SiteHeader() {
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("User");
   const [avatarUrl, setAvatarUrl] = useState("/placeholder.svg");
+  const router = useRouter();
 
   // Load authentication state and user data from localStorage on component mount
   useEffect(() => {
@@ -115,10 +118,15 @@ export function SiteHeader() {
     localStorage.removeItem("hedgefi_watchlist");
     localStorage.removeItem("displayName");
     localStorage.removeItem("avatarUrl");
+
+    // Also remove the authentication cookie
+    Cookies.remove("isAuthenticated", { path: "/" });
+
     setIsAuthenticated(false);
     setUserAddress(null);
     setDisplayName("User");
     setAvatarUrl("/placeholder.svg");
+    router.push("/");
   };
 
   return (
