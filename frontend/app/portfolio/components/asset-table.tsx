@@ -1,40 +1,41 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreVertical, LineChart, History, Share2, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { Card } from "@/components/ui/card"
-import { AutoShillModal } from "./auto-shill-modal"
-import { TradeModal } from "./trade-modal"
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, LineChart, History, Share2, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { Card } from "@/components/ui/card";
+import { AutoShillModal } from "./auto-shill-modal";
+import { TradeModal } from "./trade-modal";
+import { useRouter } from "next/navigation";
 
 interface Asset {
-  id: string
-  symbol: string
-  name: string
-  category: "defi" | "nft" | "layer1" | "layer2" | "meme" | "stablecoin"
-  price: number
-  priceChange: number
-  priceChangePercent: number
-  dailyPL: number
-  avgCost: number
-  pl: number
-  plPercent: number
-  value: number
-  holdings: number
-  address?: string
+  id: string;
+  symbol: string;
+  name: string;
+  category: "defi" | "nft" | "layer1" | "layer2" | "meme" | "stablecoin";
+  price: number;
+  priceChange: number;
+  priceChangePercent: number;
+  dailyPL: number;
+  avgCost: number;
+  pl: number;
+  plPercent: number;
+  value: number;
+  holdings: number;
+  address?: string;
 }
 
 const mockAssets: Asset[] = [
   {
-    id: "1",
+    id: "ethereum",
     symbol: "WETH",
     name: "Ethereum",
     address: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
@@ -50,7 +51,7 @@ const mockAssets: Asset[] = [
     value: 7000,
   },
   {
-    id: "2",
+    id: "solana",
     symbol: "SOL",
     name: "Solana",
     address: "So11111111111111111111111111111111111111112",
@@ -66,7 +67,7 @@ const mockAssets: Asset[] = [
     value: 43500,
   },
   {
-    id: "3",
+    id: "pepe",
     symbol: "PEPE",
     name: "Pepe",
     address: "0x6982508145454ce325ddbe47a25d4ec3d2311933",
@@ -82,7 +83,7 @@ const mockAssets: Asset[] = [
     value: 150,
   },
   {
-    id: "4",
+    id: "blur",
     symbol: "BLUR",
     name: "Blur",
     address: "0x5283d291dbcf85356a21ba090e6db59121208b44",
@@ -98,7 +99,7 @@ const mockAssets: Asset[] = [
     value: 3250,
   },
   {
-    id: "5",
+    id: "uniswap",
     symbol: "UNI",
     name: "Uniswap",
     address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
@@ -114,7 +115,7 @@ const mockAssets: Asset[] = [
     value: 7800,
   },
   {
-    id: "6",
+    id: "dogecoin",
     symbol: "DOGE",
     name: "Dogecoin",
     address: "0x4206931337dc273a630d328da6441786bfad668f",
@@ -130,7 +131,7 @@ const mockAssets: Asset[] = [
     value: 7500,
   },
   {
-    id: "7",
+    id: "polygon",
     symbol: "MATIC",
     name: "Polygon",
     address: "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
@@ -146,7 +147,7 @@ const mockAssets: Asset[] = [
     value: 12000,
   },
   {
-    id: "8",
+    id: "aave",
     symbol: "AAVE",
     name: "Aave",
     address: "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9",
@@ -162,7 +163,7 @@ const mockAssets: Asset[] = [
     value: 6000,
   },
   {
-    id: "9",
+    id: "apecoin",
     symbol: "APE",
     name: "ApeCoin",
     address: "0x4d224452801aced8b2f0aebe155379bb5d594381",
@@ -178,7 +179,7 @@ const mockAssets: Asset[] = [
     value: 5600,
   },
   {
-    id: "10",
+    id: "bonk",
     symbol: "BONK",
     name: "Bonk",
     address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
@@ -193,7 +194,7 @@ const mockAssets: Asset[] = [
     plPercent: 100,
     value: 400,
   },
-]
+];
 
 const getCoinLogo = (symbol: string) => {
   const coinLogos: { [key: string]: string } = {
@@ -209,38 +210,39 @@ const getCoinLogo = (symbol: string) => {
     AAVE: "https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@1a63530be6e374711a8554f31b17e4cb92c25fa5/128/color/aave.png",
     APE: "https://assets.coingecko.com/coins/images/24383/large/apecoin.jpg?1647476455",
     BONK: "https://assets.coingecko.com/coins/images/28600/large/bonk.jpg?1672304290",
-  }
+  };
 
-  return coinLogos[symbol.toUpperCase()] || "/placeholder.svg"
-}
+  return coinLogos[symbol.toUpperCase()] || "/placeholder.svg";
+};
 
 interface AssetTableProps {
-  searchQuery: string
+  searchQuery: string;
 }
 
 const formatNumber = (num: number): string => {
   if (Math.abs(num) >= 1) {
-    return num.toFixed(2)
+    return num.toFixed(2);
   }
-  return num.toPrecision(3)
-}
+  return num.toPrecision(3);
+};
 
 export function AssetTable({ searchQuery }: AssetTableProps) {
-  const [assets, setAssets] = useState<Asset[]>(mockAssets)
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
-  const [isShillModalOpen, setIsShillModalOpen] = useState(false)
-  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false)
+  const [assets, setAssets] = useState<Asset[]>(mockAssets);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [isShillModalOpen, setIsShillModalOpen] = useState(false);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const router = useRouter();
 
   const filteredAssets = assets.filter(
     (asset) =>
       asset.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      asset.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleAutoShill = (asset: Asset) => {
-    setSelectedAsset(asset)
-    setIsShillModalOpen(true)
-  }
+    setSelectedAsset(asset);
+    setIsShillModalOpen(true);
+  };
 
   return (
     <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
@@ -261,7 +263,10 @@ export function AssetTable({ searchQuery }: AssetTableProps) {
           </thead>
           <tbody>
             {filteredAssets.map((asset) => (
-              <tr key={asset.id} className="border-b border-white/10 hover:bg-white/5">
+              <tr
+                key={asset.id}
+                className="border-b border-white/10 hover:bg-white/5"
+              >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10">
@@ -273,28 +278,64 @@ export function AssetTable({ searchQuery }: AssetTableProps) {
                       />
                     </div>
                     <div>
-                      <div className="font-medium">{asset.symbol}</div>
-                      <div className="text-sm text-muted-foreground">{asset.name}</div>
+                      <div className="font-medium">
+                        <span
+                          className="font-semibold cursor-pointer hover:text-blue-500 transition-colors"
+                          onClick={() => router.push(`/coins/${asset.id}`)}
+                        >
+                          {asset.name}
+                        </span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span
+                          className="text-gray-400 text-sm block cursor-pointer hover:text-blue-500 transition-colors"
+                          onClick={() => router.push(`/coins/${asset.id}`)}
+                        >
+                          {asset.symbol}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right">${formatNumber(asset.price)}</td>
                 <td className="px-4 py-3 text-right">
-                  <span className={asset.dailyPL >= 0 ? "text-green-500" : "text-red-500"}>
+                  ${formatNumber(asset.price)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <span
+                    className={
+                      asset.dailyPL >= 0 ? "text-green-500" : "text-red-500"
+                    }
+                  >
                     ${formatNumber(asset.dailyPL)}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">${formatNumber(asset.avgCost)}</td>
-                <td className="px-4 py-3 text-right">{formatNumber(asset.holdings)}</td>
                 <td className="px-4 py-3 text-right">
-                  <span className={asset.pl >= 0 ? "text-green-500" : "text-red-500"}>${formatNumber(asset.pl)}</span>
+                  ${formatNumber(asset.avgCost)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className={asset.plPercent >= 0 ? "text-green-500" : "text-red-500"}>
+                  {formatNumber(asset.holdings)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <span
+                    className={
+                      asset.pl >= 0 ? "text-green-500" : "text-red-500"
+                    }
+                  >
+                    ${formatNumber(asset.pl)}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <span
+                    className={
+                      asset.plPercent >= 0 ? "text-green-500" : "text-red-500"
+                    }
+                  >
                     {formatNumber(asset.plPercent)}%
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">${formatNumber(asset.value)}</td>
+                <td className="px-4 py-3 text-right">
+                  ${formatNumber(asset.value)}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-center gap-2">
                     <Button
@@ -302,8 +343,8 @@ export function AssetTable({ searchQuery }: AssetTableProps) {
                       size="sm"
                       className="bg-gradient-to-r from-sky-400 to-blue-500"
                       onClick={() => {
-                        setSelectedAsset(asset)
-                        setIsTradeModalOpen(true)
+                        setSelectedAsset(asset);
+                        setIsTradeModalOpen(true);
                       }}
                     >
                       Trade
@@ -350,12 +391,19 @@ export function AssetTable({ searchQuery }: AssetTableProps) {
         </table>
       </div>
       {selectedAsset && (
-        <AutoShillModal isOpen={isShillModalOpen} onClose={() => setIsShillModalOpen(false)} asset={selectedAsset} />
+        <AutoShillModal
+          isOpen={isShillModalOpen}
+          onClose={() => setIsShillModalOpen(false)}
+          asset={selectedAsset}
+        />
       )}
       {selectedAsset && (
-        <TradeModal isOpen={isTradeModalOpen} onClose={() => setIsTradeModalOpen(false)} asset={selectedAsset} />
+        <TradeModal
+          isOpen={isTradeModalOpen}
+          onClose={() => setIsTradeModalOpen(false)}
+          asset={selectedAsset}
+        />
       )}
     </Card>
-  )
+  );
 }
-
