@@ -22,6 +22,7 @@ import { Footer } from "@/app/components/Footer";
 import GridBackground from "@/app/components/GridBackground";
 import { Input } from "@/components/ui/input";
 import Marquee from "react-fast-marquee";
+import { SiteLeftbar } from "@/app/components/site-leftbar";
 
 // Import the mock coin data
 import { trendingCoins, type Coin } from "@/app/data/mockCoins";
@@ -182,151 +183,166 @@ export default function CoinPage() {
       <SiteHeader />
 
       <main className="flex-1 pt-20">
-        <div className="container mx-auto p-4">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-400/30"></div>
-            </div>
-          ) : coinData ? (
-            <div className="grid grid-cols-12 gap-6">
-              {/* Left Section - Chart and Analytics */}
-              <div className="col-span-9">
-                {/* Chart Card */}
-                <Card className="mb-6 border border-gray-400/30">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-xl font-bold flex items-center gap-2">
-                      <span>{coinData.symbol}/USDT</span>
-                      <span className="text-sm text-green-400">(+8.56%)</span>
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      {timeframes.map((timeframe) => (
-                        <Button
-                          key={timeframe}
-                          variant={
-                            selectedTimeframe === timeframe
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => setSelectedTimeframe(timeframe)}
-                        >
-                          {timeframe}
-                        </Button>
-                      ))}
+        <div className="flex">
+          {/* Show sidebar when authenticated */}
+          {isAuthenticated && <SiteLeftbar />}
+
+          <div className="flex-1">
+            <div className="container p-4">
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-400/30"></div>
+                </div>
+              ) : coinData ? (
+                <div className="grid grid-cols-12 gap-6">
+                  {/* Left Section - Chart and Analytics */}
+                  <div className="col-span-9">
+                    {/* Chart Card */}
+                    <Card className="mb-6 border border-gray-400/30">
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-xl font-bold flex items-center gap-2">
+                          <span>{coinData.symbol}/USDT</span>
+                          <span className="text-sm text-green-400">
+                            (+8.56%)
+                          </span>
+                        </CardTitle>
+                        <div className="flex gap-2">
+                          {timeframes.map((timeframe) => (
+                            <Button
+                              key={timeframe}
+                              variant={
+                                selectedTimeframe === timeframe
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => setSelectedTimeframe(timeframe)}
+                            >
+                              {timeframe}
+                            </Button>
+                          ))}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0 h-[600px]">
+                        <TradingViewWidget symbol={coinData.symbol} />
+                      </CardContent>
+                    </Card>
+
+                    {/* Analytics Tabs */}
+                    <Card className="border border-gray-400/30">
+                      <CardContent className="p-4">
+                        <Tabs defaultValue="market-stats">
+                          <TabsList className="grid grid-cols-6 mb-4">
+                            <TabsTrigger value="market-stats">
+                              <Globe className="w-4 h-4 mr-2" />
+                              Market Stats
+                            </TabsTrigger>
+                            <TabsTrigger value="holders">
+                              <Users className="w-4 h-4 mr-2" />
+                              Top Holders
+                            </TabsTrigger>
+                            <TabsTrigger value="traders">
+                              <Activity className="w-4 h-4 mr-2" />
+                              Traders
+                            </TabsTrigger>
+                            <TabsTrigger value="liquidity">
+                              <Layers className="w-4 h-4 mr-2" />
+                              Liquidity
+                            </TabsTrigger>
+                            <TabsTrigger value="bubble-map">
+                              <PieChart className="w-4 h-4 mr-2" />
+                              Bubble Map
+                            </TabsTrigger>
+                            <TabsTrigger value="wallets">
+                              <Wallet className="w-4 h-4 mr-2" />
+                              Active Wallets
+                            </TabsTrigger>
+                          </TabsList>
+
+                          {/* Tab Content */}
+                          <TabsContent value="market-stats">
+                            <MarketStatsTab
+                              coinData={coinData}
+                              volumeData={volumeData}
+                            />
+                          </TabsContent>
+                          <TabsContent value="holders">
+                            <TopHolders holders={mockHolders} />
+                          </TabsContent>
+                          <TabsContent value="traders">
+                            <TradersTab />
+                          </TabsContent>
+                          <TabsContent value="liquidity">
+                            <LiquidityTab />
+                          </TabsContent>
+                          <TabsContent value="bubble-map">
+                            <BubbleMapTab />
+                          </TabsContent>
+                          <TabsContent value="wallets">
+                            <ActiveWalletsTab />
+                          </TabsContent>
+                        </Tabs>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Right Section - Trading/Chat Interface - Fixed */}
+                  <div className="col-span-3">
+                    <div className="sticky top-24 space-y-6 max-h-[calc(100vh-100px)] overflow-auto">
+                      <Card className="border border-gray-400/30">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                          <div className="flex gap-2">
+                            <Button
+                              variant={showChat ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setShowChat(true)}
+                            >
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Chat
+                            </Button>
+                            <Button
+                              variant={showChat ? "outline" : "default"}
+                              size="sm"
+                              onClick={() => setShowChat(false)}
+                            >
+                              <Wallet className="w-4 h-4 mr-2" />
+                              Trade
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {showChat ? (
+                            <CoinChat />
+                          ) : (
+                            <CoinTrade
+                              symbol={coinData.symbol}
+                              isAuthenticated={isAuthenticated}
+                              handleTradeAction={handleTradeAction}
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-0 h-[600px]">
-                    <TradingViewWidget symbol={coinData.symbol} />
-                  </CardContent>
-                </Card>
-
-                {/* Analytics Tabs */}
-                <Card className="border border-gray-400/30">
-                  <CardContent className="p-4">
-                    <Tabs defaultValue="market-stats">
-                      <TabsList className="grid grid-cols-6 mb-4">
-                        <TabsTrigger value="market-stats">
-                          <Globe className="w-4 h-4 mr-2" />
-                          Market Stats
-                        </TabsTrigger>
-                        <TabsTrigger value="holders">
-                          <Users className="w-4 h-4 mr-2" />
-                          Top Holders
-                        </TabsTrigger>
-                        <TabsTrigger value="traders">
-                          <Activity className="w-4 h-4 mr-2" />
-                          Traders
-                        </TabsTrigger>
-                        <TabsTrigger value="liquidity">
-                          <Layers className="w-4 h-4 mr-2" />
-                          Liquidity
-                        </TabsTrigger>
-                        <TabsTrigger value="bubble-map">
-                          <PieChart className="w-4 h-4 mr-2" />
-                          Bubble Map
-                        </TabsTrigger>
-                        <TabsTrigger value="wallets">
-                          <Wallet className="w-4 h-4 mr-2" />
-                          Active Wallets
-                        </TabsTrigger>
-                      </TabsList>
-
-                      {/* Tab Content */}
-                      <TabsContent value="market-stats">
-                        <MarketStatsTab
-                          coinData={coinData}
-                          volumeData={volumeData}
-                        />
-                      </TabsContent>
-                      <TabsContent value="holders">
-                        <TopHolders holders={mockHolders} />
-                      </TabsContent>
-                      <TabsContent value="traders">
-                        <TradersTab />
-                      </TabsContent>
-                      <TabsContent value="liquidity">
-                        <LiquidityTab />
-                      </TabsContent>
-                      <TabsContent value="bubble-map">
-                        <BubbleMapTab />
-                      </TabsContent>
-                      <TabsContent value="wallets">
-                        <ActiveWalletsTab />
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right Section - Trading/Chat Interface */}
-              <div className="col-span-3 space-y-6">
-                <Card className="border border-gray-400/30">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="flex gap-2">
-                      <Button
-                        variant={showChat ? "outline" : "default"}
-                        size="sm"
-                        onClick={() => setShowChat(false)}
-                      >
-                        <Wallet className="w-4 h-4 mr-2" />
-                        Trade
-                      </Button>
-                      <Button
-                        variant={showChat ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowChat(true)}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Chat
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {showChat ? (
-                      <CoinChat />
-                    ) : (
-                      <CoinTrade
-                        symbol={coinData.symbol}
-                        isAuthenticated={isAuthenticated}
-                        handleTradeAction={handleTradeAction}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <h2 className="text-2xl font-bold mb-4">Coin not found</h2>
+                  <p className="mb-6">
+                    The coin you're looking for doesn't exist or has been
+                    removed.
+                  </p>
+                  <Button onClick={() => router.push("/")}>
+                    Return to Home
+                  </Button>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold mb-4">Coin not found</h2>
-              <p className="mb-6">
-                The coin you're looking for doesn't exist or has been removed.
-              </p>
-              <Button onClick={() => router.push("/")}>Return to Home</Button>
-            </div>
-          )}
+          </div>
         </div>
       </main>
-      <Footer />
+      {/* Only show footer when not logged in */}
+      {!isAuthenticated && <Footer />}
     </div>
   );
 }

@@ -1,5 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
-import Marquee from "react-fast-marquee";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AlertTriangle } from "lucide-react";
 
 // Type definition for a holder
 export type Holder = {
@@ -21,24 +27,6 @@ export const mockHolders: Holder[] = [
   { rank: 9, address: "0x5678...4567", liquidityPercentage: 2.9 },
   { rank: 10, address: "0x4321...5678", liquidityPercentage: 2.5 },
 ];
-
-// Address marquee component
-const AddressMarquee: React.FC<{ text: string }> = ({ text }) => {
-  return (
-    <div className="w-[300px] bg-gray-800 rounded-lg px-2 py-1">
-      <Marquee
-        gradient={false}
-        speed={20}
-        delay={2}
-        play={true}
-        direction="left"
-        pauseOnHover={true}
-      >
-        <span className="font-clean text-green-400">{text}</span>
-      </Marquee>
-    </div>
-  );
-};
 
 // Stats card component
 const StatsCard: React.FC<{ title: string; value: string }> = ({
@@ -66,23 +54,54 @@ const TopHolders: React.FC<{ holders?: Holder[] }> = ({
     <Card className="border border-gray-400/30">
       <CardContent className="p-4">
         <h3 className="text-lg font-semibold mb-4">Top Holders</h3>
-        <div className="space-y-3">
-          {holders.map((holder) => (
-            <div
-              key={holder.rank}
-              className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-gray-400/30"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">
-                  #{holder.rank}
-                </span>
-                <AddressMarquee text={holder.address} />
-              </div>
-              <span className="text-sm font-bold">
-                {holder.liquidityPercentage.toFixed(2)}%
-              </span>
-            </div>
-          ))}
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-400/30">
+                <th className="text-left p-2 text-sm text-muted-foreground">
+                  Rank
+                </th>
+                <th className="text-left p-2 text-sm text-muted-foreground">
+                  Wallet Address
+                </th>
+                <th className="text-right p-2 text-sm text-muted-foreground">
+                  % Holding
+                </th>
+                <th className="text-right p-2 text-sm text-muted-foreground">
+                  Note
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {holders.map((holder) => (
+                <tr
+                  key={holder.rank}
+                  className="border-b border-gray-400/10 hover:bg-black/20"
+                >
+                  <td className="p-2 text-sm">#{holder.rank}</td>
+                  <td className="p-2 text-sm font-mono">{holder.address}</td>
+                  <td className="p-2 text-sm text-right font-bold">
+                    {holder.liquidityPercentage.toFixed(2)}%
+                  </td>
+                  <td className="p-2 text-sm text-right">
+                    {holder.liquidityPercentage > 5 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Potentially rug pull (holding &gt;5%)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </CardContent>
     </Card>
