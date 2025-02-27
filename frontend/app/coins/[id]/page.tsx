@@ -189,7 +189,7 @@ export default function CoinPage() {
         <main
           className={`flex-1 overflow-y-auto ${
             isAuthenticated ? "ml-[280px]" : ""
-          } ${coinData ? "pr-[350px]" : ""}`}
+          } ${coinData ? "pr-[400px]" : ""}`}
         >
           <div className="container p-4">
             {loading ? (
@@ -198,7 +198,7 @@ export default function CoinPage() {
               </div>
             ) : coinData ? (
               <div className="grid grid-cols-12 gap-6">
-                {/* Left Section - Chart and Analytics */}
+                {/* Chart and Analytics */}
                 <div className="col-span-12">
                   {/* Chart Card */}
                   <Card className="mb-6 border border-gray-400/30">
@@ -224,7 +224,7 @@ export default function CoinPage() {
                         ))}
                       </div>
                     </CardHeader>
-                    <CardContent className="p-0 h-[600px]">
+                    <CardContent className="p-0 w-full">
                       <TradingViewWidget symbol={coinData.symbol} />
                     </CardContent>
                   </Card>

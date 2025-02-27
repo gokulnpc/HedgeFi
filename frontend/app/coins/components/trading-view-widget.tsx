@@ -36,6 +36,7 @@ export default function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
           enable_publishing: false,
           allow_symbol_change: true,
           container_id: container.current.id,
+          autosize: true,
         });
       }
     };
@@ -52,6 +53,12 @@ export default function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
   }, [symbol]);
 
   return (
-    <div id={`tradingview_${symbol}`} ref={container} className="h-full" />
+    <div className="w-full aspect-[21/9]">
+      <div
+        id={`tradingview_${symbol}`}
+        ref={container}
+        className="w-full h-full"
+      />
+    </div>
   );
 }

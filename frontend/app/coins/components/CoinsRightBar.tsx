@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Wallet } from "lucide-react";
@@ -19,11 +19,32 @@ export default function CoinsRightBar({
   handleTradeAction,
 }: CoinsRightBarProps) {
   const [showChat, setShowChat] = useState(true);
+  const [windowHeight, setWindowHeight] = useState(0);
+
+  useEffect(() => {
+    // Set initial height
+    setWindowHeight(window.innerHeight);
+
+    // Update height on window resize
+    const handleResize = () => {
+      setWindowHeight(window.innerHeight);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Clean up event listener
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   return (
-    <div className="fixed right-4 top-24 w-[calc(25%-2rem)] max-w-[350px]">
-      <div className="space-y-6 max-h-[calc(100vh-100px)] overflow-auto">
-        <Card className="border border-gray-400/30">
+    <div
+      className="fixed right-4 w-[calc(30%-2rem)] max-w-[400px]"
+      style={{ height: `calc(${windowHeight}px - 96px)` }}
+    >
+      <div className="space-y-6 h-full overflow-auto">
+        <Card className="h-full flex flex-col shadow-lg bg-black/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="flex gap-2">
               <Button
@@ -44,7 +65,7 @@ export default function CoinsRightBar({
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-auto">
             {showChat ? (
               <CoinChat />
             ) : (
