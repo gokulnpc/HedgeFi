@@ -26,6 +26,7 @@ import {
   Star,
   Settings,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -98,6 +99,7 @@ export function SiteHeader() {
     { label: "Marketplace", href: "/marketplace", icon: Search },
     { label: "Bets", href: "/bets", icon: Swords },
     { label: "Trading", href: "/trading", icon: TrendingUp },
+    { label: "Quick Swap", href: "/dashboard/quick-swap", icon: RefreshCw },
     { label: "Communities", href: "/communities", icon: Users },
   ];
 

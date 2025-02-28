@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "../components/app-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bet } from "./types";
 
 export default function BetsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -152,7 +153,7 @@ export default function BetsPage() {
                   </Link>
                 </div>
                 <div className="overflow-hidden rounded-xl border border-white/10">
-                  <PastBetsSlider bets={filteredPastBets} />
+                  <PastBetsSlider bets={filteredPastBets as Bet[]} />
                 </div>
               </div>
             </TabsContent>

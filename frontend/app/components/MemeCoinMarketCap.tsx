@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Eye,
   Star,
+  Search,
 } from "lucide-react";
 import {
   Pagination,
@@ -25,6 +26,7 @@ import type { Chain, FilterOption } from "./types";
 import { MarketFilters } from "./MarketFilters";
 import { useRouter } from "next/navigation";
 import { trendingCoins, type Coin } from "@/app/data/mockCoins";
+import { Input } from "@/components/ui/input";
 
 const chains: Chain[] = [
   {
@@ -140,6 +142,7 @@ export function MemeCoinMarketCap({
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const itemsPerPage = 5;
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Load favorites from localStorage on component mount
   useEffect(() => {
@@ -225,6 +228,15 @@ export function MemeCoinMarketCap({
       filtered = filtered.filter((coin) => favorites.includes(coin.id));
     }
 
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (coin) =>
+          coin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          coin.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
     // Filter by chain if selected
     if (selectedChain) {
       // This is a placeholder - in a real app, you'd filter by chain
@@ -247,7 +259,7 @@ export function MemeCoinMarketCap({
     }
 
     return filtered;
-  }, [activeFilter, selectedChain, favorites, watchlistOnly]);
+  }, [activeFilter, selectedChain, favorites, watchlistOnly, searchTerm]);
 
   const totalPages = Math.ceil(filteredCoins.length / itemsPerPage);
 
@@ -267,21 +279,37 @@ export function MemeCoinMarketCap({
   };
 
   return (
-    <section className="container py-12">
+    <section className="w-full py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full"
       >
-        <MarketFilters
-          chains={chains}
-          filterOptions={filterOptions}
-          selectedChain={selectedChain}
-          activeFilter={activeFilter}
-          onChainSelect={setSelectedChain}
-          onFilterSelect={setActiveFilter}
-        />
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <MarketFilters
+            chains={chains}
+            filterOptions={filterOptions}
+            selectedChain={selectedChain}
+            activeFilter={activeFilter}
+            onChainSelect={setSelectedChain}
+            onFilterSelect={setActiveFilter}
+          />
+
+          <div className="relative w-full md:w-auto md:min-w-[300px]">
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+              size={16}
+            />
+            <Input
+              type="text"
+              placeholder="Search tokens by name or symbol..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2 w-full"
+            />
+          </div>
+        </div>
 
         {/* Table section */}
         <div className="overflow-x-auto mt-4">

@@ -36,14 +36,14 @@ export function AppLayout({ children, showFooter = false }: AppLayoutProps) {
     <div className="relative min-h-screen">
       <SiteHeader />
 
-      <div className="flex">
+      <div className="flex h-[calc(100vh-64px)]">
         {/* Left Sidebar - only shown when authenticated */}
         {isAuthenticated && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed top-[64px] left-0 z-10"
+            className="fixed top-[64px] left-0 z-10 h-[calc(100vh-64px)]"
           >
             <SiteLeftbar />
           </motion.div>
@@ -51,9 +51,9 @@ export function AppLayout({ children, showFooter = false }: AppLayoutProps) {
 
         {/* Main Content - adjust padding based on authentication status */}
         <main
-          className={`flex-1 pt-20 pb-16 ${
+          className={`flex-1 pt-16 pb-0 ${
             isAuthenticated ? "pl-[300px]" : ""
-          }`}
+          } h-full overflow-hidden`}
         >
           {children}
         </main>

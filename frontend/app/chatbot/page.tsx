@@ -27,6 +27,7 @@ import {
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 
 interface Message {
   id: string;
@@ -89,14 +90,50 @@ export default function ChatbotPage() {
   const [editingContent, setEditingContent] = useState("");
   const [isListening, setIsListening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showFollowUpActions, setShowFollowUpActions] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Check if we need to start a new chat
+  useEffect(() => {
+    if (searchParams.get("new") === "true") {
+      startNewChat();
+    }
+  }, [searchParams.get("new"), searchParams.get("t")]);
+
+  // Follow-up quick actions based on previous interaction
+  const followUpActions = [
+    {
+      label: "Quick Swap",
+      prompt: "Help me swap these tokens on the best DEX with lowest fees",
+      icon: <ArrowLeftRight className="h-4 w-4" />,
+    },
+    {
+      label: "Latest News",
+      prompt: "Show me the latest news about these tokens",
+      icon: <Newspaper className="h-4 w-4" />,
+    },
+    {
+      label: "Price Alert",
+      prompt: "Set a price alert for these tokens",
+      icon: <LineChart className="h-4 w-4" />,
+    },
+  ];
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [scrollToBottom]);
+  }, [messages, scrollToBottom]);
+
+  useEffect(() => {
+    if (input.length > 0) {
+      scrollToBottom();
+    }
+  }, [input, scrollToBottom]);
 
   const handleSend = async (content: string, file?: File) => {
     if ((!content.trim() && !file) || isLoading) return;
@@ -134,12 +171,23 @@ export default function ChatbotPage() {
       };
       setMessages((prev) => [...prev, botMessage]);
       setIsLoading(false);
+      // Show follow-up actions after bot response
+      setShowFollowUpActions(true);
     }, 1000);
   };
 
   const handleQuickAction = (prompt: string) => {
     setHasInteracted(true); // Add this line
+    setShowFollowUpActions(false); // Reset follow-up actions when starting a new conversation
     handleSend(prompt);
+  };
+
+  // Function to start a new chat
+  const startNewChat = () => {
+    setMessages([]);
+    setInput("");
+    setHasInteracted(false);
+    setShowFollowUpActions(false);
   };
 
   const handleCopy = (content: string) => {
@@ -241,7 +289,7 @@ export default function ChatbotPage() {
 
   return (
     <AppLayout showFooter={false}>
-      <div className="container max-w-4xl mx-auto h-[calc(100vh-5rem)] flex flex-col">
+      <div className="ml-10 mr-10 mx-auto flex flex-col h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)] pt-12">
         {/* Welcome Section */}
         <AnimatePresence>
           {!hasInteracted && (
@@ -249,7 +297,7 @@ export default function ChatbotPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="text-center py-12 space-y-6"
+              className="text-center py-8 space-y-6 mt-4"
             >
               <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <Brain className="w-8 h-8 text-primary" />
@@ -282,7 +330,7 @@ export default function ChatbotPage() {
                 return (
                   <Card
                     key={action.label}
-                    className="p-4 cursor-pointer hover:bg-primary/5 transition-colors border-primary/20"
+                    className="p-4 cursor-pointer bg-[#2A2B2E] border-[#353538] text-gray-300 hover:bg-[#353538] hover:text-white transition-colors"
                     onClick={() => handleQuickAction(action.prompt)}
                   >
                     <div className="flex items-center gap-3">
@@ -303,7 +351,7 @@ export default function ChatbotPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="flex-1 overflow-y-auto p-4 space-y-4"
+          className="flex-1 overflow-y-auto p-4 space-y-4 mt-2"
         >
           {messages.map((message) => (
             <motion.div
@@ -441,8 +489,35 @@ export default function ChatbotPage() {
           <div ref={messagesEndRef} />
         </motion.div>
 
+        {/* Follow-up Quick Actions */}
+        <AnimatePresence>
+          {showFollowUpActions && hasInteracted && messages.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="px-4 py-3"
+            >
+              <div className="flex justify-center gap-4">
+                {followUpActions.map((action, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="default"
+                    className="bg-[#2A2B2E] border-[#353538] text-gray-300 hover:bg-[#353538] hover:text-white flex items-center justify-start text-sm gap-2 px-6 py-2 min-w-[160px]"
+                    onClick={() => handleSend(action.prompt)}
+                  >
+                    <span className="text-primary">{action.icon}</span>
+                    <span>{action.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Input Area */}
-        <div className="p-4">
+        <div className="pt-4 mt-auto">
           <div className="relative flex items-center">
             <div className="absolute left-2 flex items-center gap-2">
               <Button
