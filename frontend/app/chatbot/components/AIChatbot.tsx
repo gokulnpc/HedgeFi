@@ -29,7 +29,7 @@ import { useChatStore } from "../store";
 import { Message as BaseMessage } from "@/types/chat";
 import ThinkingMessage from "./ThinkingMessage";
 import { sendChatMessage } from "../service";
-import { ChatSwapInterface } from "./ChatSwapInterface";
+import { ChatSwapInterface } from "./ChatSwapInterface/index";
 import type { Message, SwapMessageContent } from "@/types/chat";
 
 // Map of icon components
@@ -227,8 +227,17 @@ export default function AIChatbot() {
     setShowFollowUpActions(false);
   };
 
-  const handleCopy = (content: string) => {
-    navigator.clipboard.writeText(content);
+  const handleCopy = (content: string | SwapMessageContent) => {
+    if (typeof content === "string") {
+      navigator.clipboard.writeText(content);
+    }
+  };
+
+  const handleSpeak = (content: string | SwapMessageContent) => {
+    if (typeof content === "string") {
+      const utterance = new SpeechSynthesisUtterance(content);
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleEdit = (message: Message) => {
@@ -295,11 +304,6 @@ export default function AIChatbot() {
     }
   };
 
-  const handleSpeak = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
-
   const handleRegenerate = async (messageId: string) => {
     setIsThinking(true);
 
@@ -312,7 +316,8 @@ export default function AIChatbot() {
       .slice(0, messageIndex)
       .reverse()
       .find((m) => !m.isBot);
-    if (!previousUserMessage) return;
+    if (!previousUserMessage || typeof previousUserMessage.content !== "string")
+      return;
 
     // Remove the old bot message and all messages after it
     const newMessages = messages.slice(0, messageIndex);
@@ -402,200 +407,216 @@ export default function AIChatbot() {
         transition={{ duration: 0.3 }}
         className="flex-1 overflow-y-auto p-4 space-y-4 mt-2"
       >
-        {messages.map((message) => (
-          <motion.div
-            key={message.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "flex gap-3",
-              message.isBot ? "items-start" : "items-start flex-row-reverse"
-            )}
-          >
-            <Avatar>
-              {message.isBot ? (
-                <>
-                  <AvatarImage src="/hedgefi-bot.png" />
-                  <AvatarFallback>
-                    <Bot className="h-5 w-5" />
-                  </AvatarFallback>
-                </>
-              ) : (
-                <>
-                  <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback>U</AvatarFallback>
-                </>
-              )}
-            </Avatar>
-            <div
+        {messages.map((message) => {
+          const messageContent = message.content;
+          const isStringContent = typeof messageContent === "string";
+          const isSwapContent = (content: any): content is SwapMessageContent =>
+            typeof content === "object" && content.type === "swap";
+
+          return (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               className={cn(
-                "flex flex-col gap-2",
-                message.isBot ? "items-start" : "items-end"
+                "flex gap-3",
+                message.isBot ? "items-start" : "items-start flex-row-reverse"
               )}
             >
-              {editingMessageId === message.id ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={editingContent}
-                    onChange={(e) => setEditingContent(e.target.value)}
-                    className="min-w-[300px]"
-                    autoFocus
-                  />
-                  <Button size="sm" onClick={handleSaveEdit}>
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingMessageId(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "rounded-lg px-4 py-2 max-w-[80%]",
-                    message.isBot
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-primary text-primary-foreground"
-                  )}
-                >
-                  {message.isBot ? (
-                    typeof message.content === "string" ? (
-                      <ReactMarkdown
-                        components={{
-                          p: ({ node, ...props }) => (
-                            <p
-                              className="text-sm whitespace-pre-wrap"
-                              {...props}
-                            />
-                          ),
-                          strong: ({ node, ...props }) => (
-                            <strong className="font-bold" {...props} />
-                          ),
-                          em: ({ node, ...props }) => (
-                            <em className="italic" {...props} />
-                          ),
-                          ol: ({ node, ...props }) => (
-                            <ol className="list-decimal pl-6 my-2" {...props} />
-                          ),
-                          ul: ({ node, ...props }) => (
-                            <ul className="list-disc pl-6 my-2" {...props} />
-                          ),
-                          li: ({ node, ...props }) => (
-                            <li className="my-1" {...props} />
-                          ),
-                          h1: ({ node, ...props }) => (
-                            <h1 className="text-xl font-bold my-3" {...props} />
-                          ),
-                          h2: ({ node, ...props }) => (
-                            <h2 className="text-lg font-bold my-2" {...props} />
-                          ),
-                          h3: ({ node, ...props }) => (
-                            <h3
-                              className="text-base font-bold my-2"
-                              {...props}
-                            />
-                          ),
-                          code: ({ node, ...props }) => (
-                            <code
-                              className="bg-gray-800 px-1 py-0.5 rounded text-xs"
-                              {...props}
-                            />
-                          ),
-                          blockquote: ({ node, ...props }) => (
-                            <blockquote
-                              className="border-l-2 border-gray-500 pl-4 my-2 italic"
-                              {...props}
-                            />
-                          ),
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    ) : isSwapContent(message.content) ? (
-                      <ChatSwapInterface
-                        defaultFromToken={message.content.fromToken}
-                        defaultToToken={message.content.toToken}
-                        onSwapComplete={handleSwapComplete}
-                      />
-                    ) : null
-                  ) : (
-                    <div className="text-sm whitespace-pre-wrap">
-                      {typeof message.content === "string"
-                        ? message.content
-                        : ""}
-                    </div>
-                  )}
-                  {message.file && (
-                    <div className="mt-2 p-2 bg-background/10 rounded flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      <a
-                        href={message.file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm underline"
-                      >
-                        {message.file.name}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+              <Avatar>
                 {message.isBot ? (
+                  <>
+                    <AvatarImage src="/hedgefi-bot.png" />
+                    <AvatarFallback>
+                      <Bot className="h-5 w-5" />
+                    </AvatarFallback>
+                  </>
+                ) : (
+                  <>
+                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarFallback>U</AvatarFallback>
+                  </>
+                )}
+              </Avatar>
+              <div
+                className={cn(
+                  "flex flex-col gap-2",
+                  message.isBot ? "items-start" : "items-end"
+                )}
+              >
+                {editingMessageId === message.id ? (
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleCopy(message.content)}
-                    >
-                      <Copy className="h-3 w-3" />
+                    <Input
+                      value={editingContent}
+                      onChange={(e) => setEditingContent(e.target.value)}
+                      className="min-w-[300px]"
+                      autoFocus
+                    />
+                    <Button size="sm" onClick={handleSaveEdit}>
+                      Save
                     </Button>
                     <Button
+                      size="sm"
                       variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleSpeak(message.content)}
+                      onClick={() => setEditingMessageId(null)}
                     >
-                      <Volume2 className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleRegenerate(message.id)}
-                    >
-                      <RefreshCw className="h-3 w-3" />
+                      Cancel
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleCopy(message.content)}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleEdit(message)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
+                  <div
+                    className={cn(
+                      "rounded-lg px-4 py-2 max-w-[80%]",
+                      message.isBot
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-primary text-primary-foreground"
+                    )}
+                  >
+                    {message.isBot ? (
+                      isStringContent ? (
+                        <ReactMarkdown
+                          components={{
+                            p: ({ node, ...props }) => (
+                              <p
+                                className="text-sm whitespace-pre-wrap"
+                                {...props}
+                              />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong className="font-bold" {...props} />
+                            ),
+                            em: ({ node, ...props }) => (
+                              <em className="italic" {...props} />
+                            ),
+                            ol: ({ node, ...props }) => (
+                              <ol
+                                className="list-decimal pl-6 my-2"
+                                {...props}
+                              />
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <ul className="list-disc pl-6 my-2" {...props} />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <li className="my-1" {...props} />
+                            ),
+                            h1: ({ node, ...props }) => (
+                              <h1
+                                className="text-xl font-bold my-3"
+                                {...props}
+                              />
+                            ),
+                            h2: ({ node, ...props }) => (
+                              <h2
+                                className="text-lg font-bold my-2"
+                                {...props}
+                              />
+                            ),
+                            h3: ({ node, ...props }) => (
+                              <h3
+                                className="text-base font-bold my-2"
+                                {...props}
+                              />
+                            ),
+                            code: ({ node, ...props }) => (
+                              <code
+                                className="bg-gray-800 px-1 py-0.5 rounded text-xs"
+                                {...props}
+                              />
+                            ),
+                            blockquote: ({ node, ...props }) => (
+                              <blockquote
+                                className="border-l-2 border-gray-500 pl-4 my-2 italic"
+                                {...props}
+                              />
+                            ),
+                          }}
+                        >
+                          {messageContent}
+                        </ReactMarkdown>
+                      ) : isSwapContent(messageContent) ? (
+                        <ChatSwapInterface
+                          defaultFromToken={messageContent.fromToken}
+                          defaultToToken={messageContent.toToken}
+                          onSwapComplete={handleSwapComplete}
+                        />
+                      ) : null
+                    ) : (
+                      <div className="text-sm whitespace-pre-wrap">
+                        {isStringContent ? messageContent : ""}
+                      </div>
+                    )}
+                    {message.file && (
+                      <div className="mt-2 p-2 bg-background/10 rounded flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        <a
+                          href={message.file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm underline"
+                        >
+                          {message.file.name}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                  {message.isBot ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleCopy(messageContent)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleSpeak(messageContent)}
+                      >
+                        <Volume2 className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleRegenerate(message.id)}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleCopy(messageContent)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleEdit(message)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
         {isThinking && <ThinkingMessage />}
         <div ref={messagesEndRef} />
       </motion.div>
