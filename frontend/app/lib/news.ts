@@ -31,7 +31,7 @@ export async function fetchNewsItems() {
         article.title &&
         article.description &&
         (article.title.toLowerCase().includes(filterTerm.toLowerCase()) ||
-          article.description.toLowerCase().includes(searchTerm.toLowerCase()))
+          article.description.toLowerCase().includes(filterTerm.toLowerCase()))
     );
 
     // Remove duplicates and get up to 15 articles
@@ -39,7 +39,7 @@ export async function fetchNewsItems() {
       new Map(allArticles.map((article) => [article.title, article])).values()
     ).slice(0, 6);
 
-    console.log("response", uniqueArticles);
+    // console.log("response", uniqueArticles);
 
     return uniqueArticles;
   } catch (error) {

@@ -34,6 +34,7 @@ import CoinsRightBar from "../components/CoinsRightBar";
 
 // import fetching top holders
 import { fetchTopHolders } from "@/app/lib/topHolder";
+import { fetchTokenInfo } from "@/app/lib/coins";
 
 // Types for enhanced features
 type TimeRange = "5M" | "1H" | "4H" | "24H";
@@ -57,6 +58,25 @@ type LiquidityData = {
   liquidityChange24h: number;
   topPool: string;
   poolCount: number;
+};
+
+// Add new type for API response
+type TokenInfo = {
+  baseTokenAddress: string;
+  baseTokenImageUrl: string;
+  baseTokenName: string;
+  baseTokenSymbol: string;
+  currentPrice: number;
+  liquidity: number;
+  marketCap: number;
+  priceChange24hr: number;
+  txStats24hr: {
+    buyers: number;
+    buys: number;
+    sellers: number;
+    sells: number;
+  };
+  volume24hr: number;
 };
 
 const TradingViewWidget = dynamic(
@@ -134,26 +154,44 @@ export default function CoinPage() {
 
   useEffect(() => {
     // Check authentication status on client side
+    const fetchCoin = async () => {
+      try {
+        const tokenInfo = await fetchTokenInfo(id as string);
+        console.log("tokenInfo", tokenInfo);
+        if (tokenInfo) {
+          // Convert API data to match our Coin type structure
+          const apiCoin: Coin = {
+            id: id as string,
+            name: tokenInfo.baseTokenName,
+            symbol: tokenInfo.baseTokenSymbol,
+            price: tokenInfo.currentPrice,
+            change1h: 0, // Not provided in API
+            change24h: tokenInfo.priceChange24hr,
+            change7d: 0, // Not provided in API
+            marketCap: tokenInfo.marketCap,
+            volume24h: tokenInfo.volume24hr,
+            circulatingSupply: 0, // Not provided in API
+            sparkline: [], // Not provided in API
+            logo: tokenInfo.baseTokenImageUrl,
+          };
+          
+          setCoinData(apiCoin);
+          setLoading(false);
+        } else {
+          // Fallback to mock data if API returns nothing
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching token info:", error);
+        setLoading(false);
+      }
+    }
     const savedAuth = localStorage.getItem("isAuthenticated");
     setIsAuthenticated(savedAuth === "true");
 
     // Fetch coin data based on ID
     if (id) {
-      // Handle case when id is an array
-      const coinId = Array.isArray(id) ? id[0] : id.toString();
-
-      // For now, we'll use the mock data
-      // In a real app, you would fetch this from an API
-      const coin = trendingCoins.find((coin) => coin.id === coinId);
-
-      if (coin) {
-        setCoinData(coin);
-        setLoading(false);
-      } else {
-        // If coin not found, you could redirect to a 404 page
-        // or show an error message
-        setLoading(false);
-      }
+      fetchCoin();
     }
   }, [id]);
 
