@@ -25,18 +25,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Search,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowUpDown,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  Eye,
   Filter,
-  MoreVertical,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Share2,
+  Trash,
   TrendingUp,
   TrendingDown,
   Rocket,
   Users,
   DollarSign,
   LinkIcon,
-  Share2,
   Settings,
-  Plus,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -107,6 +129,12 @@ const mockTokens = [
 export default function TokensPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  }>({ key: "value", direction: "desc" });
 
   // Filter tokens based on search query and active tab
   const filteredTokens = mockTokens.filter((token) => {
@@ -123,10 +151,53 @@ export default function TokensPage() {
     return matchesSearch;
   });
 
+  // Sort tokens based on sort config
+  const sortedTokens = [...filteredTokens].sort((a, b) => {
+    if (
+      a[sortConfig.key as keyof typeof a] < b[sortConfig.key as keyof typeof b]
+    ) {
+      return sortConfig.direction === "asc" ? -1 : 1;
+    }
+    if (
+      a[sortConfig.key as keyof typeof a] > b[sortConfig.key as keyof typeof b]
+    ) {
+      return sortConfig.direction === "asc" ? 1 : -1;
+    }
+    return 0;
+  });
+
+  // Handle sort
+  const handleSort = (key: string) => {
+    setSortConfig({
+      key,
+      direction:
+        sortConfig.key === key && sortConfig.direction === "asc"
+          ? "desc"
+          : "asc",
+    });
+  };
+
+  // Find best and worst performers
+  const bestPerformer = [...mockTokens].reduce(
+    (best, token) => (token.priceChange > best.priceChange ? token : best),
+    mockTokens[0]
+  );
+
+  const worstPerformer = [...mockTokens].reduce(
+    (worst, token) => (token.priceChange < worst.priceChange ? token : worst),
+    mockTokens[0]
+  );
+
+  // Calculate total volume
+  const totalVolume = mockTokens.reduce((sum, token) => {
+    const volumeNumber = parseFloat(token.volume24h.replace(/[^0-9.]/g, ""));
+    return sum + volumeNumber;
+  }, 0);
+
   return (
     <AppLayout>
-      <main className="pt-24 pb-16 px-4 md:px-6">
-        <div className="container max-w-7xl">
+      <main className="pt-6 pb-16">
+        <div className="container max-w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -136,10 +207,10 @@ export default function TokensPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold">
-                  My Tokens
+                  My
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
                     {" "}
-                    Dashboard
+                    Tokens
                   </span>
                 </h1>
                 <p className="text-muted-foreground">
@@ -156,33 +227,33 @@ export default function TokensPage() {
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl">
-                <CardContent className="p-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <Rocket className="h-5 w-5 text-sky-400" />
                   </div>
-                  <div className="mt-4">
+                  <div>
                     <p className="text-sm text-muted-foreground">
                       Total Tokens
                     </p>
-                    <div className="mt-2 flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2">
                       <p className="text-2xl font-bold">{mockTokens.length}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl">
-                <CardContent className="p-6">
+              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <Users className="h-5 w-5 text-purple-400" />
                   </div>
-                  <div className="mt-4">
+                  <div>
                     <p className="text-sm text-muted-foreground">
                       Total Holders
                     </p>
-                    <div className="mt-2 flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2">
                       <p className="text-2xl font-bold">3,617</p>
                       <span className="text-green-500">+12.5%</span>
                     </div>
@@ -190,32 +261,82 @@ export default function TokensPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl">
-                <CardContent className="p-6">
+              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <DollarSign className="h-5 w-5 text-green-400" />
                   </div>
-                  <div className="mt-4">
-                    <p className="text-sm text-muted-foreground">Total Value</p>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <p className="text-2xl font-bold">$868,320</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Total Volume
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-bold">
+                        ${totalVolume.toLocaleString()}
+                      </p>
                       <span className="text-green-500">+8.3%</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl">
-                <CardContent className="p-6">
+              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <TrendingUp className="h-5 w-5 text-yellow-400" />
                   </div>
-                  <div className="mt-4">
+                  <div>
                     <p className="text-sm text-muted-foreground">24h Volume</p>
-                    <div className="mt-2 flex items-baseline gap-2">
+                    <div className="flex items-baseline gap-2">
                       <p className="text-2xl font-bold">$155,840</p>
                       <span className="text-red-500">-3.2%</span>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden xl:col-span-1">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <TrendingUp className="h-5 w-5 text-green-400" />
+                    <p className="text-base font-medium">Best Performer</p>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xl font-bold">
+                        {bestPerformer.symbol}
+                      </div>
+                      <Badge
+                        variant="default"
+                        className="bg-green-500/20 text-green-500"
+                      >
+                        +{bestPerformer.priceChange.toFixed(2)}%
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground text-sm">24h change</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden xl:col-span-1">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <TrendingDown className="h-5 w-5 text-red-400" />
+                    <p className="text-base font-medium">Worst Performer</p>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xl font-bold">
+                        {worstPerformer.symbol}
+                      </div>
+                      <Badge
+                        variant="destructive"
+                        className="bg-red-500/20 text-red-500"
+                      >
+                        {worstPerformer.priceChange.toFixed(2)}%
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground text-sm">24h change</p>
                   </div>
                 </CardContent>
               </Card>
@@ -437,7 +558,7 @@ export default function TokensPage() {
                                 size="icon"
                                 className="h-8 w-8 rounded-full"
                               >
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent

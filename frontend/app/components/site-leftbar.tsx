@@ -157,16 +157,6 @@ export function SiteLeftbar() {
       if (!expandedSections.includes("dashboard")) {
         setExpandedSections([...expandedSections, "dashboard"]);
       }
-    } else if (pathname === "/portfolio") {
-      setActiveSection("dashboard");
-      if (!expandedSections.includes("dashboard")) {
-        setExpandedSections([...expandedSections, "dashboard"]);
-      }
-    } else if (pathname === "/shill-manager") {
-      setActiveSection("dashboard");
-      if (!expandedSections.includes("dashboard")) {
-        setExpandedSections([...expandedSections, "dashboard"]);
-      }
     } else if (
       pathname.includes("/chatbot") ||
       pathname.includes("/hedge-bot")
@@ -248,23 +238,23 @@ export function SiteLeftbar() {
               <div className="pt-1 pb-1">
                 <SubNavItem
                   label="My Portfolio"
-                  href="/portfolio"
-                  isActive={pathname === "/portfolio"}
+                  href="/dashboard/portfolio"
+                  isActive={pathname === "/dashboard/portfolio"}
                 />
                 <SubNavItem
                   label="My Bets"
-                  href="/dashboard/bets"
-                  isActive={pathname === "/dashboard/bets"}
+                  href="/dashboard/my-bets"
+                  isActive={pathname === "/dashboard/my-bets"}
                 />
                 <SubNavItem
                   label="My Tokens"
-                  href="/dashboard/tokens"
-                  isActive={pathname === "/dashboard/tokens"}
+                  href="/dashboard/my-tokens"
+                  isActive={pathname === "/dashboard/my-tokens"}
                 />
                 <SubNavItem
                   label="Shill Manager"
-                  href="/shill-manager"
-                  isActive={pathname === "/shill-manager"}
+                  href="/dashboard/shill-manager"
+                  isActive={pathname === "/dashboard/shill-manager"}
                 />
               </div>
             </motion.div>

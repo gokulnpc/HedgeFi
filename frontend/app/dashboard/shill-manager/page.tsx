@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AppLayout } from "../components/app-layout";
-import GridBackground from "../components/GridBackground";
+import { AppLayout } from "../../components/app-layout";
+import GridBackground from "../../components/GridBackground";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardOverview } from "./components/dashboard-overview";
 import { AutoShillSettings } from "./components/auto-shill-settings";

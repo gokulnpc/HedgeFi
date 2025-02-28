@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Token created successfully",
-      redirectTo: "/dashboard/tokens", // Redirect to the tokens management page
+      redirectTo: "/dashboard/my-tokens", // Redirect to the my-tokens management page
     });
   } catch (error) {
     console.error("Create token error:", error);

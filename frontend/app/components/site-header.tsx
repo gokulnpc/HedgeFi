@@ -199,13 +199,19 @@ export function SiteHeader() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/portfolio" className="cursor-pointer">
+                      <Link
+                        href="/dashboard/portfolio"
+                        className="cursor-pointer"
+                      >
                         <Wallet className="mr-2 h-4 w-4" />
                         <span>My Portfolio</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/shill-manager" className="cursor-pointer">
+                      <Link
+                        href="/dashboard/shill-manager"
+                        className="cursor-pointer"
+                      >
                         <Megaphone className="mr-2 h-4 w-4" />
                         <span>Shill Manager</span>
                       </Link>
