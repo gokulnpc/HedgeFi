@@ -26,9 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useChatStore } from "../store";
-import { Message } from "@/types/chat";
+import { Message as BaseMessage } from "@/types/chat";
 import ThinkingMessage from "./ThinkingMessage";
 import { sendChatMessage } from "../service";
+import { ChatSwapInterface } from "./ChatSwapInterface";
+import type { Message, SwapMessageContent } from "@/types/chat";
 
 // Map of icon components
 const icons = {
@@ -82,6 +84,11 @@ export default function AIChatbot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFollowUpActions, setShowFollowUpActions] = useState(false);
   const searchParams = useSearchParams();
+  const [showSwapInterface, setShowSwapInterface] = useState(false);
+
+  // Type guard for SwapMessageContent
+  const isSwapContent = (content: any): content is SwapMessageContent =>
+    typeof content === "object" && content.type === "swap";
 
   // Check if we need to start a new chat
   useEffect(() => {
@@ -125,6 +132,49 @@ export default function AIChatbot() {
     }
   }, [input, scrollToBottom]);
 
+  const handleSwapComplete = (
+    fromAmount: string,
+    fromToken: string,
+    toAmount: string,
+    toToken: string
+  ) => {
+    // Add a success message to the chat
+    const successMessage: Message = {
+      id: Date.now().toString(),
+      content: `✅ Successfully swapped ${fromAmount} ${fromToken} to ${toAmount} ${toToken}`,
+      isBot: true,
+      timestamp: new Date().toISOString(),
+    };
+    addMessage(successMessage);
+    setShowSwapInterface(false);
+  };
+
+  const handleSwapRequest = (content: string) => {
+    // Check if the message is a swap request
+    const isSwapRequest =
+      content.toLowerCase().includes("swap") ||
+      content.toLowerCase().includes("exchange") ||
+      content.toLowerCase().includes("trade");
+
+    if (isSwapRequest) {
+      // Extract token symbols if mentioned
+      const tokens = content.match(/[A-Z]{2,}/g) || [];
+      const swapMessage: Message = {
+        id: Date.now().toString(),
+        content: {
+          type: "swap",
+          fromToken: tokens[0],
+          toToken: tokens[1],
+        } as SwapMessageContent,
+        isBot: true,
+        timestamp: new Date().toISOString(),
+      };
+      addMessage(swapMessage);
+      return true;
+    }
+    return false;
+  };
+
   const handleSend = async (content: string, file?: File) => {
     if ((!content.trim() && !file) || isThinking) return;
 
@@ -140,7 +190,6 @@ export default function AIChatbot() {
 
     // Add file if present
     if (file) {
-      // In a real app, you would upload the file to a server and get a URL
       userMessage.file = {
         name: file.name,
         url: URL.createObjectURL(file),
@@ -148,21 +197,16 @@ export default function AIChatbot() {
       };
     }
 
-    // Convert to ContentWithUser and add to store
-    addMessage({
-      id: userMessage.id,
-      content: userMessage.content,
-      isBot: false,
-      timestamp: userMessage.timestamp,
-    });
-
+    addMessage(userMessage);
     setInput("");
 
-    try {
-      // Send message to API - the service will handle adding the bot message to the store
-      await sendChatMessage(content, file);
+    // Check if it's a swap request
+    if (handleSwapRequest(content)) {
+      return;
+    }
 
-      // Show follow-up actions after bot response
+    try {
+      await sendChatMessage(content, file);
       setShowFollowUpActions(true);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -189,14 +233,19 @@ export default function AIChatbot() {
 
   const handleEdit = (message: Message) => {
     setEditingMessageId(message.id);
-    setEditingContent(message.content);
+    if (typeof message.content === "string") {
+      setEditingContent(message.content);
+    }
   };
 
   const handleSaveEdit = () => {
     if (!editingMessageId) return;
 
-    // In a real app, you would update the message in the store
-    // For now, we'll just update the local state
+    // Find the message being edited
+    const messageToEdit = messages.find((msg) => msg.id === editingMessageId);
+    if (!messageToEdit || typeof messageToEdit.content !== "string") return;
+
+    // Update the message in the store
     const updatedMessages = messages.map((msg) =>
       msg.id === editingMessageId ? { ...msg, content: editingContent } : msg
     );
@@ -413,57 +462,70 @@ export default function AIChatbot() {
                   )}
                 >
                   {message.isBot ? (
-                    <ReactMarkdown
-                      components={{
-                        p: ({ node, ...props }) => (
-                          <p
-                            className="text-sm whitespace-pre-wrap"
-                            {...props}
-                          />
-                        ),
-                        strong: ({ node, ...props }) => (
-                          <strong className="font-bold" {...props} />
-                        ),
-                        em: ({ node, ...props }) => (
-                          <em className="italic" {...props} />
-                        ),
-                        ol: ({ node, ...props }) => (
-                          <ol className="list-decimal pl-6 my-2" {...props} />
-                        ),
-                        ul: ({ node, ...props }) => (
-                          <ul className="list-disc pl-6 my-2" {...props} />
-                        ),
-                        li: ({ node, ...props }) => (
-                          <li className="my-1" {...props} />
-                        ),
-                        h1: ({ node, ...props }) => (
-                          <h1 className="text-xl font-bold my-3" {...props} />
-                        ),
-                        h2: ({ node, ...props }) => (
-                          <h2 className="text-lg font-bold my-2" {...props} />
-                        ),
-                        h3: ({ node, ...props }) => (
-                          <h3 className="text-base font-bold my-2" {...props} />
-                        ),
-                        code: ({ node, ...props }) => (
-                          <code
-                            className="bg-gray-800 px-1 py-0.5 rounded text-xs"
-                            {...props}
-                          />
-                        ),
-                        blockquote: ({ node, ...props }) => (
-                          <blockquote
-                            className="border-l-2 border-gray-500 pl-4 my-2 italic"
-                            {...props}
-                          />
-                        ),
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
+                    typeof message.content === "string" ? (
+                      <ReactMarkdown
+                        components={{
+                          p: ({ node, ...props }) => (
+                            <p
+                              className="text-sm whitespace-pre-wrap"
+                              {...props}
+                            />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-bold" {...props} />
+                          ),
+                          em: ({ node, ...props }) => (
+                            <em className="italic" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal pl-6 my-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-disc pl-6 my-2" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="my-1" {...props} />
+                          ),
+                          h1: ({ node, ...props }) => (
+                            <h1 className="text-xl font-bold my-3" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="text-lg font-bold my-2" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3
+                              className="text-base font-bold my-2"
+                              {...props}
+                            />
+                          ),
+                          code: ({ node, ...props }) => (
+                            <code
+                              className="bg-gray-800 px-1 py-0.5 rounded text-xs"
+                              {...props}
+                            />
+                          ),
+                          blockquote: ({ node, ...props }) => (
+                            <blockquote
+                              className="border-l-2 border-gray-500 pl-4 my-2 italic"
+                              {...props}
+                            />
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : isSwapContent(message.content) ? (
+                      <ChatSwapInterface
+                        defaultFromToken={message.content.fromToken}
+                        defaultToToken={message.content.toToken}
+                        onSwapComplete={handleSwapComplete}
+                      />
+                    ) : null
                   ) : (
                     <div className="text-sm whitespace-pre-wrap">
-                      {message.content}
+                      {typeof message.content === "string"
+                        ? message.content
+                        : ""}
                     </div>
                   )}
                   {message.file && (

@@ -28,9 +28,15 @@ export type News = {
   summary?: string;
 };
 
+export interface SwapMessageContent {
+  type: "swap";
+  fromToken?: string;
+  toToken?: string;
+}
+
 export interface Message {
   id: string;
-  content: string;
+  content: string | SwapMessageContent;
   isBot: boolean;
   timestamp: string;
   file?: {
