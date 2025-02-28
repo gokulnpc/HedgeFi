@@ -129,13 +129,15 @@ export default function AIChatbot() {
 
     setHasInteracted(true);
 
+    // Create user message
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       content,
       isBot: false,
       timestamp: new Date().toISOString(),
     };
 
+    // Add file if present
     if (file) {
       // In a real app, you would upload the file to a server and get a URL
       userMessage.file = {
@@ -145,28 +147,24 @@ export default function AIChatbot() {
       };
     }
 
-    addMessage(userMessage);
+    // Convert to ContentWithUser and add to store
+    addMessage({
+      id: userMessage.id,
+      content: userMessage.content,
+      isBot: false,
+      timestamp: userMessage.timestamp,
+    });
+
     setInput("");
-    setIsThinking(true);
 
     try {
-      // Send message to API
-      const botMessage = await sendChatMessage(content, file);
-      addMessage(botMessage);
+      // Send message to API - the service will handle adding the bot message to the store
+      await sendChatMessage(content, file);
 
       // Show follow-up actions after bot response
       setShowFollowUpActions(true);
     } catch (error) {
       console.error("Error sending message:", error);
-      // Add error message
-      addMessage({
-        id: Date.now().toString(),
-        content: "Sorry, there was an error processing your request.",
-        isBot: true,
-        timestamp: new Date().toISOString(),
-      });
-    } finally {
-      setIsThinking(false);
     }
   };
 
