@@ -102,7 +102,7 @@ const saveTwitterHandle = (handle: string) => {
   }
 };
 
-export default function CreatePrediction() {
+export default function CreateBet() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -112,7 +112,7 @@ export default function CreatePrediction() {
     handle: string;
     connected: boolean;
   } | null>(null);
-  const [showTwitterDialog, setShowTwitterDialog] = useState(false);
+  const [twitterHandleChanged, setTwitterHandleChanged] = useState(false);
   const router = useRouter();
 
   // Check authentication status and Twitter connection
@@ -133,11 +133,6 @@ export default function CreatePrediction() {
     // Check if user has connected Twitter
     const twitter = getUserTwitterInfo();
     setTwitterInfo(twitter);
-
-    // If user hasn't connected Twitter, show dialog
-    if (!twitter) {
-      setShowTwitterDialog(true);
-    }
   }, [router]);
 
   // Initialize form
@@ -159,6 +154,15 @@ export default function CreatePrediction() {
       form.setValue("twitterHandle", twitterInfo.handle);
     }
   }, [twitterInfo, form]);
+
+  // Track Twitter handle changes
+  const handleTwitterHandleChange = (value: string) => {
+    if (!twitterInfo || !twitterInfo.connected) return;
+
+    const currentHandle = twitterInfo.handle || "";
+    // Check if the handle has been changed from the saved one
+    setTwitterHandleChanged(value !== currentHandle);
+  };
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,11 +193,15 @@ export default function CreatePrediction() {
     // For now, we'll simulate success
     saveTwitterHandle(twitterHandle);
     setTwitterInfo({ handle: twitterHandle, connected: true });
-    setShowTwitterDialog(false);
+
+    // Reset the modified state after updating
+    setTwitterHandleChanged(false);
 
     toast({
       title: "Success!",
-      description: "Your Twitter account has been connected.",
+      description: twitterInfo?.connected
+        ? "Your Twitter handle has been updated."
+        : "Your Twitter account has been connected.",
       className: "bg-green-500 text-white",
     });
   };
@@ -220,7 +228,7 @@ export default function CreatePrediction() {
       // Save the Twitter handle to user settings
       saveTwitterHandle(values.twitterHandle);
 
-      // Add API call here to create prediction
+      // Add API call here to create bet
       console.log(values);
 
       // Simulate API call
@@ -228,7 +236,7 @@ export default function CreatePrediction() {
 
       toast({
         title: "Success!",
-        description: "Your prediction has been created.",
+        description: "Your bet has been created.",
         className: "bg-green-500 text-white",
       });
 
@@ -237,7 +245,7 @@ export default function CreatePrediction() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create prediction. Please try again.",
+        description: "Failed to create bet. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -258,8 +266,8 @@ export default function CreatePrediction() {
           >
             <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
             <p>
-              You need to be signed in to create a prediction. Redirecting to
-              the bets page...
+              You need to be signed in to create a bet. Redirecting to the bets
+              page...
             </p>
           </motion.div>
         </div>
@@ -278,10 +286,10 @@ export default function CreatePrediction() {
         >
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
-              Create a New Prediction
+              Create a New Bet
             </h1>
             <p className="text-muted-foreground">
-              Set up your prediction market and let others bet on the outcome
+              Set up your bet and let others bet on the outcome
             </p>
           </div>
 
@@ -298,7 +306,7 @@ export default function CreatePrediction() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prediction Title</FormLabel>
+                        <FormLabel>Bet Title</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Will Bitcoin reach $100k by 2024?"
@@ -320,10 +328,10 @@ export default function CreatePrediction() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>Bet Description</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Provide more details about your prediction..."
+                            placeholder="Provide more details about your bet..."
                             className="min-h-[100px] border-white/10 resize-none"
                             {...field}
                           />
@@ -380,7 +388,7 @@ export default function CreatePrediction() {
                           </div>
                         </FormControl>
                         <FormDescription>
-                          When will the prediction be resolved?
+                          When will the bet be resolved?
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -418,12 +426,20 @@ export default function CreatePrediction() {
                       <FormItem>
                         <div className="flex items-center gap-2">
                           <FormLabel>Twitter Handle</FormLabel>
-                          {twitterInfo?.connected && (
+                          {twitterInfo?.connected && !twitterHandleChanged && (
                             <Badge
                               variant="outline"
                               className="bg-blue-500/10 text-blue-500 border-blue-500/20"
                             >
                               Connected
+                            </Badge>
+                          )}
+                          {twitterInfo?.connected && twitterHandleChanged && (
+                            <Badge
+                              variant="outline"
+                              className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                            >
+                              Modified
                             </Badge>
                           )}
                         </div>
@@ -434,13 +450,51 @@ export default function CreatePrediction() {
                               placeholder="@username"
                               className="border-white/10 pl-10"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handleTwitterHandleChange(e.target.value);
+                              }}
                             />
                           </div>
                         </FormControl>
-                        <FormDescription>
-                          Your Twitter handle is required for verification
-                          purposes
-                        </FormDescription>
+                        <div className="flex items-center justify-between mt-2">
+                          <FormDescription>
+                            Your Twitter handle is required for verification
+                          </FormDescription>
+                          {!twitterInfo?.connected && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleTwitterConnect}
+                              className="border-blue-500/20 text-blue-500 hover:bg-blue-500/10"
+                            >
+                              <Twitter className="mr-2 h-3 w-3" />
+                              Connect
+                            </Button>
+                          )}
+                          {twitterInfo?.connected && twitterHandleChanged && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleTwitterConnect}
+                              className="border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10"
+                            >
+                              <Twitter className="mr-2 h-3 w-3" />
+                              Update
+                            </Button>
+                          )}
+                        </div>
+                        {!twitterInfo?.connected && (
+                          <div className="flex items-center gap-2 p-3 mt-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                            <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                            <p className="text-xs text-yellow-500">
+                              You must connect your Twitter account to create
+                              predictions.
+                            </p>
+                          </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -510,8 +564,8 @@ export default function CreatePrediction() {
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Upload a cover image for your prediction or let us
-                          generate one for you
+                          Upload a cover image for your bet or let us generate
+                          one for you
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -541,7 +595,7 @@ export default function CreatePrediction() {
                       ) : (
                         <>
                           <Upload className="mr-2 h-4 w-4" />
-                          Create Prediction
+                          Create Bet
                         </>
                       )}
                     </Button>
@@ -552,69 +606,6 @@ export default function CreatePrediction() {
           </Card>
         </motion.div>
       </div>
-
-      {/* Twitter Connection Dialog */}
-      <Dialog open={showTwitterDialog} onOpenChange={setShowTwitterDialog}>
-        <DialogContent className="sm:max-w-[425px] bg-black/90 border-white/10">
-          <DialogHeader>
-            <DialogTitle>Connect Twitter Account</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              A Twitter account is required to create predictions. This helps
-              verify your identity and prevent spam.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex items-center gap-4 p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <Twitter className="h-8 w-8 text-blue-400" />
-              <div className="flex-1">
-                <p className="font-medium">Twitter Integration</p>
-                <p className="text-sm text-muted-foreground">
-                  Connect your account to continue
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <FormLabel>Twitter Handle</FormLabel>
-              <div className="relative">
-                <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="@username"
-                  className="border-white/10 pl-10"
-                  value={form.getValues("twitterHandle")}
-                  onChange={(e) =>
-                    form.setValue("twitterHandle", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
-              <p className="text-sm text-yellow-500">
-                You must connect your Twitter account to create predictions.
-                This information will be used for verification.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-white/10"
-              onClick={() => router.push("/bets")}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleTwitterConnect}
-              className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600"
-            >
-              Connect Twitter
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AppLayout>
   );
 }
