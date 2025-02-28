@@ -1,10 +1,9 @@
 "use client";
 
-import { SiteHeader } from "./components/site-header";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
-import { Footer } from "./components/Footer";
+import { AppLayout } from "./components/app-layout";
 import {
   Zap,
   Command,
@@ -160,23 +159,15 @@ export default function Home(): JSX.Element {
     return filteredCoins.slice(start, end);
   };
 
-  // Rest of your component code...
-
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <AppLayout showFooter={false}>
       <GridBackground />
-      <SiteHeader />
-      <main className="flex-1">
-        <section className="flex min-h-screen flex-col items-center justify-center space-y-10 py-24">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="container flex flex-col items-center justify-center gap-6 text-center"
-          >
+      <div className="py-8">
+        <section className="space-y-6 pb-8 pt-6 md:pb-12 md:pt-10 lg:py-32">
+          <div className="container flex max-w-[64rem] flex-col items-center gap-4 text-center">
             <motion.a
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               href="#"
               className="inline-flex items-center rounded-full bg-muted px-4 py-1.5 text-sm font-medium"
@@ -218,20 +209,20 @@ export default function Home(): JSX.Element {
                 View Demo
               </Button>
             </motion.div>
-          </motion.div>
+          </div>
         </section>
 
         <Separator className="my-12" />
 
-        <h2 className="text-3xl text-center font-bold leading-[1.1] sm:text-3xl md:text-5xl mb-10tracking-tight">
-          Today's Meme Coin{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
-            Prices by Market Cap
-          </span>
-        </h2>
-        <MemeCoinMarketCap />
-      </main>
-      <Footer />
-    </div>
+        <div className="container">
+          <h2 className="mb-8 text-3xl font-bold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
+              Trending Meme Coins
+            </span>
+          </h2>
+          <MemeCoinMarketCap />
+        </div>
+      </div>
+    </AppLayout>
   );
 }

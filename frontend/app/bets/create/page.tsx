@@ -278,13 +278,13 @@ export default function CreateBet() {
   return (
     <AppLayout showFooter={false}>
       <GridBackground />
-      <div className="container max-w-full mx-auto px-4 pt-6 pb-16">
+      <div className="container max-w-full mx-auto px-12 pt-6 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-8">
+          <div className="mb-8 text-center">
             <h1 className="text-4xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">
               Create a New Bet
             </h1>

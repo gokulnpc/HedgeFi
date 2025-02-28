@@ -1,10 +1,10 @@
-import { Separator } from "@/components/ui/separator"
-import Link from "next/link"
+import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
 
 export function Footer() {
   return (
     <footer className="border-t bg-background">
-      <div className="container flex flex-col gap-10 py-16">
+      {/* <div className="container flex flex-col gap-10 py-16">
         <div className="grid grid-cols-2 gap-12 md:grid-cols-4">
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-semibold">HedgeFi</h3>
@@ -68,8 +68,7 @@ export function Footer() {
             </Link>
           </div>
         </div>
-      </div>
+      </div> */}
     </footer>
-  )
+  );
 }
-

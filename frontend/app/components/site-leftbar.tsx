@@ -221,7 +221,7 @@ export function SiteLeftbar() {
   }
 
   return (
-    <div className="w-[280px] flex-shrink-0 bg-gray-900/50 backdrop-blur-sm border-r border-green-500/10 py-4 h-[calc(100vh-64px)] overflow-y-auto fixed top-16 left-0 z-10">
+    <div className="h-full overflow-y-auto bg-gray-900/50 backdrop-blur-sm border-r border-green-500/10 py-4">
       <nav className="space-y-1 px-2 pb-20">
         {/* Dashboard Section */}
         <NavItem

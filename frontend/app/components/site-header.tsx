@@ -140,7 +140,10 @@ export function SiteHeader() {
     >
       <div className="flex h-20 items-center px-4 md:px-6 lg:px-8 w-full">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link
+            href={isAuthenticated ? "/dashboard" : "/"}
+            className="flex items-center space-x-2"
+          >
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

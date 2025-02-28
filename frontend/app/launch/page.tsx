@@ -1,76 +1,83 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { motion } from "framer-motion"
-import { SiteHeader } from "../components/site-header"
-import { Footer } from "../components/footer"
-import GridBackground from "../components/GridBackground"
-import { InputMethodSelector, type InputMethod } from "./input-method-selector"
-import { AIInputForm } from "./ai-input-form"
-import { RegenerationControls } from "./regeneration-controls"
-import { TokenFormSection } from "./token-form"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
+import { AppLayout } from "../components/app-layout";
+import GridBackground from "../components/GridBackground";
+import { InputMethodSelector, type InputMethod } from "./input-method-selector";
+import { AIInputForm } from "./ai-input-form";
+import { RegenerationControls } from "./regeneration-controls";
+import { TokenFormSection } from "./token-form";
 
 interface TokenDetails {
-  name: string
-  symbol: string
-  description: string
-  imageUrl: string
+  name: string;
+  symbol: string;
+  description: string;
+  imageUrl: string;
 }
 
 interface LaunchConfig {
-  initialSupply: string
-  maxSupply: string
-  launchCost: string
-  liquidityPercentage: string
-  lockupPeriod: string
+  initialSupply: string;
+  maxSupply: string;
+  launchCost: string;
+  liquidityPercentage: string;
+  lockupPeriod: string;
 }
 
 export default function LaunchPage() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [prompt, setPrompt] = useState<string>("")
-  const [aiImageUrl, setAiImageUrl] = useState<string>("")
-  const [loadingAI, setLoadingAI] = useState<boolean>(false)
-  const [error, setError] = useState<string>("")
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState<string>("");
+  const [aiImageUrl, setAiImageUrl] = useState<string>("");
+  const [loadingAI, setLoadingAI] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
   const [launchConfig, setLaunchConfig] = useState<LaunchConfig>({
     initialSupply: "200000",
     maxSupply: "1000000",
     launchCost: "0.1",
     liquidityPercentage: "60",
     lockupPeriod: "180",
-  })
-  const [inputMethod, setInputMethod] = useState<InputMethod>("manual")
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isRegeneratingDetails, setIsRegeneratingDetails] = useState(false)
-  const [isRegeneratingImage, setIsRegeneratingImage] = useState(false)
-  const [aiInput, setAiInput] = useState("")
-  const [generatedDetails, setGeneratedDetails] = useState<TokenDetails | null>(null)
+  });
+  const [inputMethod, setInputMethod] = useState<InputMethod>("manual");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegeneratingDetails, setIsRegeneratingDetails] = useState(false);
+  const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
+  const [aiInput, setAiInput] = useState("");
+  const [generatedDetails, setGeneratedDetails] = useState<TokenDetails | null>(
+    null
+  );
 
   const handleImageSelect = (file: File) => {
-    setError("")
-    setImageFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
-    setAiImageUrl("")
-  }
+    setError("");
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setAiImageUrl("");
+  };
 
   const clearImage = () => {
-    setImageFile(null)
-    setPreviewUrl(null)
-    setAiImageUrl("")
-    setError("")
-  }
+    setImageFile(null);
+    setPreviewUrl(null);
+    setAiImageUrl("");
+    setError("");
+  };
 
   const generateImage = async () => {
-    if (!prompt.trim()) return
+    if (!prompt.trim()) return;
 
     try {
-      setError("")
-      setLoadingAI(true)
+      setError("");
+      setLoadingAI(true);
 
       const response = await fetch("/api/generate-image", {
         method: "POST",
@@ -78,48 +85,50 @@ export default function LaunchPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ prompt }),
-      })
+      });
 
-      if (!response.ok) throw new Error("Failed to generate image")
+      if (!response.ok) throw new Error("Failed to generate image");
 
-      const data = await response.json()
-      setAiImageUrl(data.url)
-      setImageFile(null)
-      setPreviewUrl(null)
+      const data = await response.json();
+      setAiImageUrl(data.url);
+      setImageFile(null);
+      setPreviewUrl(null);
     } catch (error) {
-      console.error("Error generating image:", error)
-      setError("Failed to generate image. Please try again or upload an image manually.")
+      console.error("Error generating image:", error);
+      setError(
+        "Failed to generate image. Please try again or upload an image manually."
+      );
     } finally {
-      setLoadingAI(false)
+      setLoadingAI(false);
     }
-  }
+  };
 
   const handleSubmit = async (data: Record<string, string>) => {
     try {
       if (!imageFile && !aiImageUrl) {
-        setError("Please upload an image or generate one using AI")
-        return
+        setError("Please upload an image or generate one using AI");
+        return;
       }
 
-      setIsLoading(true)
-      let imageUrl = ""
+      setIsLoading(true);
+      let imageUrl = "";
 
       if (imageFile) {
-        const formData = new FormData()
-        formData.append("file", imageFile)
+        const formData = new FormData();
+        formData.append("file", imageFile);
         const response = await fetch("/api/upload", {
           method: "POST",
           body: formData,
-        })
-        if (!response.ok) throw new Error("Failed to upload image")
-        const result = await response.json()
-        imageUrl = result.url
+        });
+        if (!response.ok) throw new Error("Failed to upload image");
+        const result = await response.json();
+        imageUrl = result.url;
       } else if (aiImageUrl) {
-        imageUrl = aiImageUrl
+        imageUrl = aiImageUrl;
       }
 
       if (!imageUrl) {
-        throw new Error("Failed to process image")
+        throw new Error("Failed to process image");
       }
 
       await fetch("/api/create-token", {
@@ -131,21 +140,21 @@ export default function LaunchPage() {
           ...data,
           imageUrl,
         }),
-      })
+      });
 
-      router.push("/dashboard")
+      router.push("/dashboard");
     } catch (error) {
-      console.error("Error creating token:", error)
-      setError("Failed to create token. Please try again.")
+      console.error("Error creating token:", error);
+      setError("Failed to create token. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleGenerate = async (input: string) => {
     try {
-      setIsGenerating(true)
-      setAiInput(input)
+      setIsGenerating(true);
+      setAiInput(input);
 
       const response = await fetch("/api/generate-token", {
         method: "POST",
@@ -154,46 +163,44 @@ export default function LaunchPage() {
           input,
           type: inputMethod === "ai-tweet" ? "tweet" : "idea",
         }),
-      })
+      });
 
-      if (!response.ok) throw new Error("Failed to generate token details")
+      if (!response.ok) throw new Error("Failed to generate token details");
 
-      const data = await response.json()
-      setGeneratedDetails(data)
-      setPreviewUrl(data.imageUrl)
+      const data = await response.json();
+      setGeneratedDetails(data);
+      setPreviewUrl(data.imageUrl);
     } catch (error) {
-      console.error("Error generating token:", error)
-      setError("Failed to generate token details")
+      console.error("Error generating token:", error);
+      setError("Failed to generate token details");
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const handleRegenerateDetails = async () => {
-    if (!aiInput) return
-    setIsRegeneratingDetails(true)
-    await handleGenerate(aiInput)
-    setIsRegeneratingDetails(false)
-  }
+    if (!aiInput) return;
+    setIsRegeneratingDetails(true);
+    await handleGenerate(aiInput);
+    setIsRegeneratingDetails(false);
+  };
 
   const handleRegenerateImage = async () => {
     // Similar to handleRegenerateDetails but only for the image
     // You'll need to create a new API endpoint for this
-  }
+  };
 
   const handleConfigChange = (key: keyof LaunchConfig, value: string) => {
     setLaunchConfig((prev) => ({
       ...prev,
       [key]: value,
-    }))
-  }
+    }));
+  };
 
   return (
-    <div className="relative min-h-screen">
+    <AppLayout showFooter={false}>
       <GridBackground />
-      <SiteHeader />
-
-      <main className="relative pt-24 pb-16">
+      <div className="py-8">
         <div className="container max-w-7xl">
           <div className="flex flex-col items-center text-center space-y-4 mb-12">
             <motion.div
@@ -209,7 +216,8 @@ export default function LaunchPage() {
                 Launch Your Meme Token
               </h1>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Create, deploy, and manage your meme token with our secure and automated platform. No coding required.
+                Create, deploy, and manage your meme token with our secure and
+                automated platform. No coding required.
               </p>
             </motion.div>
           </div>
@@ -222,15 +230,25 @@ export default function LaunchPage() {
             <Card className="border-primary/20 bg-background/60 backdrop-blur-xl">
               <CardHeader>
                 <CardTitle>Create Your Token</CardTitle>
-                <CardDescription>Choose how you want to create your token</CardDescription>
+                <CardDescription>
+                  Choose how you want to create your token
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-8">
-                  <InputMethodSelector selected={inputMethod} onSelect={setInputMethod} />
+                  <InputMethodSelector
+                    selected={inputMethod}
+                    onSelect={setInputMethod}
+                  />
 
-                  {(inputMethod === "ai-joke" || inputMethod === "ai-tweet") && (
+                  {(inputMethod === "ai-joke" ||
+                    inputMethod === "ai-tweet") && (
                     <div className="space-y-6">
-                      <AIInputForm inputMethod={inputMethod} onGenerate={handleGenerate} isGenerating={isGenerating} />
+                      <AIInputForm
+                        inputMethod={inputMethod}
+                        onGenerate={handleGenerate}
+                        isGenerating={isGenerating}
+                      />
 
                       {generatedDetails && (
                         <RegenerationControls
@@ -268,9 +286,7 @@ export default function LaunchPage() {
             </Card>
           </motion.div>
         </div>
-      </main>
-      <Footer />
-    </div>
-  )
+      </div>
+    </AppLayout>
+  );
 }
-

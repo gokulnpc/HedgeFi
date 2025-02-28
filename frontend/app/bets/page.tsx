@@ -35,10 +35,10 @@ export default function BetsPage() {
   );
 
   return (
-    <AppLayout showFooter={true}>
+    <AppLayout showFooter={false}>
       <GridBackground />
-      <main className="flex-1">
-        <div className="container max-w-[1600px] mx-auto pt-6 px-4">
+      <div className="py-8">
+        <div className="container max-w-[1600px] mx-auto px-4">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -153,7 +153,7 @@ export default function BetsPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </AppLayout>
   );
 }
