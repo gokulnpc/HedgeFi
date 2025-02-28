@@ -61,70 +61,7 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
-
-// Mock data for created tokens
-const mockTokens = [
-  {
-    id: "1",
-    name: "DogeMoon",
-    symbol: "DGMN",
-    imageUrl: "/placeholder.svg?height=100&width=100",
-    description: "To the moon with Doge power!",
-    price: "$0.00042",
-    priceChange: 15.2,
-    marketCap: "$420,690",
-    holders: "1,337",
-    volume24h: "$69,420",
-    launchDate: "2023-12-01",
-    chain: "ETH",
-    status: "active",
-  },
-  {
-    id: "2",
-    name: "PepeFi",
-    symbol: "PEFI",
-    imageUrl: "/placeholder.svg?height=100&width=100",
-    description: "The rarest Pepe in DeFi",
-    price: "$0.0069",
-    priceChange: -5.3,
-    marketCap: "$138,420",
-    holders: "845",
-    volume24h: "$28,350",
-    launchDate: "2024-01-15",
-    chain: "BSC",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "CatRocket",
-    symbol: "CTRK",
-    imageUrl: "/placeholder.svg?height=100&width=100",
-    description: "Feline-powered rocket to the stars",
-    price: "$0.00013",
-    priceChange: 32.7,
-    marketCap: "$98,760",
-    holders: "512",
-    volume24h: "$15,890",
-    launchDate: "2024-02-10",
-    chain: "SOL",
-    status: "active",
-  },
-  {
-    id: "4",
-    name: "MoonLambo",
-    symbol: "MLMB",
-    imageUrl: "/placeholder.svg?height=100&width=100",
-    description: "When moon? When lambo? Now!",
-    price: "$0.00021",
-    priceChange: -12.8,
-    marketCap: "$210,450",
-    holders: "923",
-    volume24h: "$42,180",
-    launchDate: "2024-01-05",
-    chain: "ETH",
-    status: "paused",
-  },
-];
+import { useTokenStore } from "../../store/tokenStore";
 
 export default function TokensPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,8 +73,11 @@ export default function TokensPage() {
     direction: "asc" | "desc";
   }>({ key: "value", direction: "desc" });
 
+  // Get tokens from store
+  const tokens = useTokenStore((state) => state.tokens);
+
   // Filter tokens based on search query and active tab
-  const filteredTokens = mockTokens.filter((token) => {
+  const filteredTokens = tokens.filter((token) => {
     const matchesSearch =
       token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       token.symbol.toLowerCase().includes(searchQuery.toLowerCase());
@@ -178,18 +118,26 @@ export default function TokensPage() {
   };
 
   // Find best and worst performers
-  const bestPerformer = [...mockTokens].reduce(
-    (best, token) => (token.priceChange > best.priceChange ? token : best),
-    mockTokens[0]
-  );
+  const bestPerformer =
+    tokens.length > 0
+      ? [...tokens].reduce(
+          (best, token) =>
+            token.priceChange > best.priceChange ? token : best,
+          tokens[0]
+        )
+      : null;
 
-  const worstPerformer = [...mockTokens].reduce(
-    (worst, token) => (token.priceChange < worst.priceChange ? token : worst),
-    mockTokens[0]
-  );
+  const worstPerformer =
+    tokens.length > 0
+      ? [...tokens].reduce(
+          (worst, token) =>
+            token.priceChange < worst.priceChange ? token : worst,
+          tokens[0]
+        )
+      : null;
 
   // Calculate total volume
-  const totalVolume = mockTokens.reduce((sum, token) => {
+  const totalVolume = tokens.reduce((sum, token) => {
     const volumeNumber = parseFloat(token.volume24h.replace(/[^0-9.]/g, ""));
     return sum + volumeNumber;
   }, 0);
@@ -238,7 +186,7 @@ export default function TokensPage() {
                       Total Tokens
                     </p>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-2xl font-bold">{mockTokens.length}</p>
+                      <p className="text-2xl font-bold">{tokens.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -304,13 +252,13 @@ export default function TokensPage() {
                   <div className="mt-2">
                     <div className="flex items-center gap-2">
                       <div className="text-xl font-bold">
-                        {bestPerformer.symbol}
+                        {bestPerformer?.symbol}
                       </div>
                       <Badge
                         variant="default"
                         className="bg-green-500/20 text-green-500"
                       >
-                        +{bestPerformer.priceChange.toFixed(2)}%
+                        +{bestPerformer?.priceChange.toFixed(2)}%
                       </Badge>
                     </div>
                     <p className="text-muted-foreground text-sm">24h change</p>
@@ -327,13 +275,13 @@ export default function TokensPage() {
                   <div className="mt-2">
                     <div className="flex items-center gap-2">
                       <div className="text-xl font-bold">
-                        {worstPerformer.symbol}
+                        {worstPerformer?.symbol}
                       </div>
                       <Badge
                         variant="destructive"
                         className="bg-red-500/20 text-red-500"
                       >
-                        {worstPerformer.priceChange.toFixed(2)}%
+                        {worstPerformer?.priceChange.toFixed(2)}%
                       </Badge>
                     </div>
                     <p className="text-muted-foreground text-sm">24h change</p>
