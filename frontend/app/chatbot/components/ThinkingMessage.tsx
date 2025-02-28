@@ -27,7 +27,7 @@ export default function ThinkingMessage() {
           )}
         >
           <div className="flex items-center">
-            <p className="text-sm">Thinking</p>
+            <span className="text-sm">Thinking</span>
             <ThinkingDots />
           </div>
         </div>

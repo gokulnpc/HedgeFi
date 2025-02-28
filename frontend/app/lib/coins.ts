@@ -79,7 +79,7 @@ export async function fetchTokenInfo(token_address: string) {
     );
     const txStats24hr = pool.attributes.transactions.h24; // contains buys, sells, buyers, sellers
 
-    // If needed, you can also get the pool’s 24hr volume:
+    // If needed, you can also get the pool's 24hr volume:
     // const poolVolume24hr = parseFloat(pool.attributes.volume_usd.h24);
 
     // Combine the desired details into an object
@@ -106,76 +106,102 @@ export async function fetchTokenInfo(token_address: string) {
 
 export async function fetchTrendingTokens(): Promise<BaseTokenInfo[]> {
   const endpoint = "http://localhost:8000/coins/trending_pools";
-  const response = await fetch(endpoint);
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
-  }
+  try {
+    const response = await fetch(endpoint);
 
-  const json: TrendingPoolsResponse = await response.json();
-  const { data: pools, included: tokens } = json;
-
-  // Use a Map to collect unique base tokens (by token id).
-  const baseTokenMap = new Map<string, BaseTokenInfo>();
-  // Exclude these token symbols.
-  const excludedSymbols = new Set(["USDC", "SUI", "stSUI"]);
-
-  for (const pool of pools) {
-    // Get the base token reference from the pool.
-    const baseTokenRef = pool.relationships.base_token.data;
-    const tokenId = baseTokenRef.id;
-    // Find the token metadata in the "included" array.
-    const tokenData = tokens.find((token) => token.id === tokenId);
-    if (!tokenData) continue; // Skip if no matching token is found.
-
-    // Skip if the token symbol is in the excluded list.
-    if (excludedSymbols.has(tokenData.attributes.symbol)) {
-      continue;
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    // Extract and convert pool pricing/liquidity data.
-    const {
-      base_token_price_usd,
-      market_cap_usd,
-      price_change_percentage,
-      volume_usd,
-      reserve_in_usd,
-      transactions,
-    } = pool.attributes;
+    const json: TrendingPoolsResponse = await response.json();
+    const { data: pools, included: tokens } = json;
 
-    const price = parseFloat(base_token_price_usd);
-    const priceChange24h = parseFloat(price_change_percentage.h24);
-    const marketcap = market_cap_usd ? parseFloat(market_cap_usd) : null;
-    const volume24h = parseFloat(volume_usd.h24);
-    const liquidity = parseFloat(reserve_in_usd);
-    const transactions24h = transactions.h24.buys + transactions.h24.sells;
-    const activeUsers24h = transactions.h24.buyers + transactions.h24.sellers;
+    // Use a Map to collect unique base tokens (by token id).
+    const baseTokenMap = new Map<string, BaseTokenInfo>();
+    // Exclude these token symbols.
+    const excludedSymbols = new Set(["USDC", "SUI", "stSUI"]);
 
-    // Build the base token info.
-    const baseToken: BaseTokenInfo = {
-      address: tokenData.attributes.address,
-      name: tokenData.attributes.name,
-      symbol: tokenData.attributes.symbol,
-      image_url: tokenData.attributes.image_url,
-      price,
-      price_change_24h: priceChange24h,
-      marketcap,
-      volume_24h: volume24h,
-      liquidity,
-      transactions_24h: transactions24h,
-      active_users_24h: activeUsers24h,
-    };
+    for (const pool of pools) {
+      // Get the base token reference from the pool.
+      const baseTokenRef = pool.relationships.base_token.data;
+      const tokenId = baseTokenRef.id;
+      // Find the token metadata in the "included" array.
+      const tokenData = tokens.find((token) => token.id === tokenId);
+      if (!tokenData) continue; // Skip if no matching token is found.
 
-    // If the same token appears in multiple pools, choose the one with higher liquidity.
-    if (baseTokenMap.has(tokenId)) {
-      const existing = baseTokenMap.get(tokenId)!;
-      if (liquidity > existing.liquidity) {
+      // Skip if the token symbol is in the excluded list.
+      if (excludedSymbols.has(tokenData.attributes.symbol)) {
+        continue;
+      }
+
+      // Extract and convert pool pricing/liquidity data.
+      const {
+        base_token_price_usd,
+        market_cap_usd,
+        price_change_percentage,
+        volume_usd,
+        reserve_in_usd,
+        transactions,
+      } = pool.attributes;
+
+      const price = parseFloat(base_token_price_usd);
+      const priceChange24h = parseFloat(price_change_percentage.h24);
+      const marketcap = market_cap_usd ? parseFloat(market_cap_usd) : null;
+      const volume24h = parseFloat(volume_usd.h24);
+      const liquidity = parseFloat(reserve_in_usd);
+      const transactions24h = transactions.h24.buys + transactions.h24.sells;
+      const activeUsers24h = transactions.h24.buyers + transactions.h24.sellers;
+
+      // Build the base token info.
+      const baseToken: BaseTokenInfo = {
+        address: tokenData.attributes.address,
+        name: tokenData.attributes.name,
+        symbol: tokenData.attributes.symbol,
+        image_url: tokenData.attributes.image_url,
+        price,
+        price_change_24h: priceChange24h,
+        marketcap,
+        volume_24h: volume24h,
+        liquidity,
+        transactions_24h: transactions24h,
+        active_users_24h: activeUsers24h,
+      };
+
+      // If the same token appears in multiple pools, choose the one with higher liquidity.
+      if (baseTokenMap.has(tokenId)) {
+        const existing = baseTokenMap.get(tokenId)!;
+        if (liquidity > existing.liquidity) {
+          baseTokenMap.set(tokenId, baseToken);
+        }
+      } else {
         baseTokenMap.set(tokenId, baseToken);
       }
-    } else {
-      baseTokenMap.set(tokenId, baseToken);
     }
-  }
 
-  return Array.from(baseTokenMap.values());
+    return Array.from(baseTokenMap.values());
+  } catch (error) {
+    console.error(
+      "Error fetching from backend, falling back to mock data:",
+      error
+    );
+
+    // Import mock data
+    const { trendingCoins } = await import("@/app/data/mockCoins");
+
+    // Convert mock data to BaseTokenInfo format
+    return trendingCoins.map((coin) => ({
+      address: coin.id,
+      name: coin.name,
+      symbol: coin.symbol,
+      image_url: coin.logo,
+      price: coin.price,
+      price_change_24h: coin.change24h,
+      marketcap: coin.marketCap,
+      volume_24h: coin.volume24h,
+      liquidity: coin.marketCap * 0.1, // Estimate liquidity as 10% of market cap
+      transactions_24h: Math.floor(Math.random() * 1000) + 500, // Random number of transactions
+      active_users_24h: Math.floor(Math.random() * 500) + 100, // Random number of active users
+    }));
+  }
 }

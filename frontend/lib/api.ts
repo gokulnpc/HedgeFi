@@ -1,4 +1,5 @@
 import type { Content, UUID, News } from "@/types/chat";
+import OpenAI from "openai";
 
 // Mock data for news articles
 const mockNewsArticles = [
@@ -77,40 +78,68 @@ const sampleResponses: Record<string, any> = {
 };
 
 class ApiClient {
+  private openai: OpenAI;
+
+  constructor() {
+    // Initialize OpenAI client with API key from environment variable
+    this.openai = new OpenAI({
+      apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+    });
+  }
+
   async sendMessage(
     agentId: UUID,
     message: string,
     file?: File | null
   ): Promise<any[]> {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      // Call OpenAI API
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a helpful crypto assistant that provides information about cryptocurrency markets, tokens, and trading strategies.",
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+        temperature: 0.7,
+      });
 
-    // Determine response type based on message content
-    let responseType = "default";
+      // Extract the response
+      const responseContent =
+        completion.choices[0]?.message?.content ||
+        "I'm sorry, I couldn't process that request.";
 
-    if (message.toLowerCase().includes("whale")) {
-      responseType = "whale";
-    } else if (message.toLowerCase().includes("compare")) {
-      responseType = "compare";
-    } else if (message.toLowerCase().includes("stalker")) {
-      responseType = "stalker";
-    } else if (message.toLowerCase().includes("news")) {
-      responseType = "news";
+      return [
+        {
+          id: `msg-${Date.now()}`,
+          type: "text",
+          text: responseContent,
+          content: responseContent,
+          user: "assistant",
+          timestamp: Date.now(),
+          data: null,
+        },
+      ];
+    } catch (error) {
+      console.error("OpenAI API Error:", error);
+      return [
+        {
+          id: `msg-${Date.now()}`,
+          type: "text",
+          text: "Sorry, I encountered an error processing your request.",
+          content: "Sorry, I encountered an error processing your request.",
+          user: "assistant",
+          timestamp: Date.now(),
+          data: null,
+        },
+      ];
     }
-
-    const response = sampleResponses[responseType];
-
-    return [
-      {
-        id: `msg-${Date.now()}`,
-        type: "text",
-        text: response.text,
-        content: response.content,
-        user: "assistant",
-        timestamp: Date.now(),
-        data: response.data,
-      },
-    ];
   }
 }
 

@@ -330,13 +330,11 @@ export function MemeCoinMarketCap({
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="px-4 py-4 text-left"></th> {/* Star column */}
+                <th className="px-4 py-4 text-left"></th>
                 <th className="px-4 py-4 text-left">#</th>
                 <th className="px-4 py-4 text-left">Name</th>
                 <th className="px-4 py-4 text-right">Price</th>
-                {/* <th className="px-4 py-4 text-right">1h %</th> */}
                 <th className="px-4 py-4 text-right">24h %</th>
-                {/* <th className="px-4 py-4 text-right">7d %</th> */}
                 <th className="px-4 py-4 text-right">Market Cap</th>
                 <th className="px-4 py-4 text-right">Volume(24h)</th>
                 <th className="px-4 py-4 text-right"># Holders</th>
@@ -395,34 +393,6 @@ export function MemeCoinMarketCap({
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right">${coin.price}</td>
-                    {/* <td
-                      className={`text-right py-4 px-4 ${
-                        !coin.change.startsWith("-")
-                          ? "text-green-500"
-                          : "text-red-500"
-                      }`}
-                    >
-                      {!coin.change.startsWith("-") ? (
-                        <ArrowUp className="inline w-4 h-4" />
-                      ) : (
-                        <ArrowDown className="inline w-4 h-4" />
-                      )}
-                      {coin.change}
-                    </td>
-                    <td
-                      className={`text-right py-4 px-4 ${
-                        !coin.change.startsWith("-")
-                          ? "text-green-500"
-                          : "text-red-500"
-                      }`}
-                    >
-                      {!coin.change.startsWith("-") ? (
-                        <ArrowUp className="inline w-4 h-4" />
-                      ) : (
-                        <ArrowDown className="inline w-4 h-4" />
-                      )}
-                      {coin.change}
-                    </td> */}
                     <td
                       className={`text-right py-4 px-4 ${
                         !coin.change.startsWith("-")

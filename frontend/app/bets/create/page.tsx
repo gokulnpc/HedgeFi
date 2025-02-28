@@ -37,9 +37,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
-import GridBackground from "../../components/GridBackground";
+import GridBackground from "@/app/components/GridBackground";
 import { cn } from "@/lib/utils";
-import { AppLayout } from "../../components/app-layout";
+import { AppLayout } from "@/app/components/app-layout";
 import {
   Dialog,
   DialogContent,

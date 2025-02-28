@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ReactMarkdown from "react-markdown";
 import {
   Fish,
   ArrowLeftRight,
@@ -411,7 +412,60 @@ export default function AIChatbot() {
                       : "bg-primary text-primary-foreground"
                   )}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  {message.isBot ? (
+                    <ReactMarkdown
+                      components={{
+                        p: ({ node, ...props }) => (
+                          <p
+                            className="text-sm whitespace-pre-wrap"
+                            {...props}
+                          />
+                        ),
+                        strong: ({ node, ...props }) => (
+                          <strong className="font-bold" {...props} />
+                        ),
+                        em: ({ node, ...props }) => (
+                          <em className="italic" {...props} />
+                        ),
+                        ol: ({ node, ...props }) => (
+                          <ol className="list-decimal pl-6 my-2" {...props} />
+                        ),
+                        ul: ({ node, ...props }) => (
+                          <ul className="list-disc pl-6 my-2" {...props} />
+                        ),
+                        li: ({ node, ...props }) => (
+                          <li className="my-1" {...props} />
+                        ),
+                        h1: ({ node, ...props }) => (
+                          <h1 className="text-xl font-bold my-3" {...props} />
+                        ),
+                        h2: ({ node, ...props }) => (
+                          <h2 className="text-lg font-bold my-2" {...props} />
+                        ),
+                        h3: ({ node, ...props }) => (
+                          <h3 className="text-base font-bold my-2" {...props} />
+                        ),
+                        code: ({ node, ...props }) => (
+                          <code
+                            className="bg-gray-800 px-1 py-0.5 rounded text-xs"
+                            {...props}
+                          />
+                        ),
+                        blockquote: ({ node, ...props }) => (
+                          <blockquote
+                            className="border-l-2 border-gray-500 pl-4 my-2 italic"
+                            {...props}
+                          />
+                        ),
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    <div className="text-sm whitespace-pre-wrap">
+                      {message.content}
+                    </div>
+                  )}
                   {message.file && (
                     <div className="mt-2 p-2 bg-background/10 rounded flex items-center gap-2">
                       <Plus className="h-4 w-4" />
