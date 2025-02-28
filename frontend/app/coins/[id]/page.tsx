@@ -34,6 +34,7 @@ import CoinsRightBar from "../components/CoinsRightBar";
 
 // import fetching top holders
 import { fetchTopHolders } from "@/app/lib/topHolder";
+import { fetchTokenInfo } from "@/app/lib/coins";
 
 // Types for enhanced features
 type TimeRange = "5M" | "1H" | "4H" | "24H";
@@ -57,6 +58,25 @@ type LiquidityData = {
   liquidityChange24h: number;
   topPool: string;
   poolCount: number;
+};
+
+// Add new type for API response
+type TokenInfo = {
+  baseTokenAddress: string;
+  baseTokenImageUrl: string;
+  baseTokenName: string;
+  baseTokenSymbol: string;
+  currentPrice: number;
+  liquidity: number;
+  marketCap: number;
+  priceChange24hr: number;
+  txStats24hr: {
+    buyers: number;
+    buys: number;
+    sellers: number;
+    sells: number;
+  };
+  volume24hr: number;
 };
 
 const TradingViewWidget = dynamic(
@@ -134,26 +154,45 @@ export default function CoinPage() {
 
   useEffect(() => {
     // Check authentication status on client side
+    const fetchCoin = async () => {
+      try {
+        const tokenInfo = await fetchTokenInfo(id as string);
+        console.log("tokenInfo", tokenInfo);
+        if (tokenInfo) {
+          // Convert API data to match our Coin type structure
+          const apiCoin: Coin = {
+            id: id as string,
+            name: tokenInfo.baseTokenName,
+            symbol: tokenInfo.baseTokenSymbol,
+            price: tokenInfo.currentPrice,
+            change1h: 0, // Not provided in API
+            change24h: tokenInfo.priceChange24hr,
+            change7d: 0, // Not provided in API
+            marketCap: tokenInfo.marketCap,
+            volume24h: tokenInfo.volume24hr,
+            liquidity: tokenInfo.liquidity,
+            circulatingSupply: tokenInfo.circulatingSupply, // Not provided in API
+            sparkline: [], // Not provided in API
+            logo: tokenInfo.baseTokenImageUrl,
+          };
+          
+          setCoinData(apiCoin);
+          setLoading(false);
+        } else {
+          // Fallback to mock data if API returns nothing
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching token info:", error);
+        setLoading(false);
+      }
+    }
     const savedAuth = localStorage.getItem("isAuthenticated");
     setIsAuthenticated(savedAuth === "true");
 
     // Fetch coin data based on ID
     if (id) {
-      // Handle case when id is an array
-      const coinId = Array.isArray(id) ? id[0] : id.toString();
-
-      // For now, we'll use the mock data
-      // In a real app, you would fetch this from an API
-      const coin = trendingCoins.find((coin) => coin.id === coinId);
-
-      if (coin) {
-        setCoinData(coin);
-        setLoading(false);
-      } else {
-        // If coin not found, you could redirect to a 404 page
-        // or show an error message
-        setLoading(false);
-      }
+      fetchCoin();
     }
   }, [id]);
 
@@ -205,12 +244,12 @@ export default function CoinPage() {
                 <div className="col-span-12">
                   {/* Chart Card */}
                   <Card className="mb-6 border border-gray-400/30">
-                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <CardHeader className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                       <CardTitle className="flex items-center gap-2 text-xl font-bold">
                         <span>{coinData.symbol}/USDT</span>
                         <span className="text-sm text-green-400">(+8.56%)</span>
                       </CardTitle>
-                      <div className="overflow-x-auto w-full sm:w-auto">
+                      <div className="w-full overflow-x-auto sm:w-auto">
                         <div className="flex gap-2 min-w-max">
                           {timeframes.map((timeframe) => (
                             <Button
@@ -238,8 +277,8 @@ export default function CoinPage() {
                   <Card className="border border-gray-400/30">
                     <CardContent className="p-4">
                       <Tabs defaultValue="market-stats">
-                        <div className="overflow-x-auto pb-2">
-                          <TabsList className="inline-flex min-w-max mb-4">
+                        <div className="pb-2 overflow-x-auto">
+                          <TabsList className="inline-flex mb-4 min-w-max">
                             <TabsTrigger value="market-stats">
                               <Globe className="w-4 h-4 mr-2" />
                               Market Stats

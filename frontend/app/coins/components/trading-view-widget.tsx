@@ -14,7 +14,7 @@ interface TradingViewWidgetProps {
 
 export default function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
   const container = useRef<HTMLDivElement>(null);
-
+  console.log("symbol", symbol);
   useEffect(() => {
     if (!container.current) return;
 
@@ -26,7 +26,7 @@ export default function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
         new window.TradingView.widget({
           width: "100%",
           height: "100%",
-          symbol: `BINANCE:${symbol}USDT`,
+          symbol: `${symbol}USDT`,
           interval: "D",
           timezone: "Etc/UTC",
           theme: "dark",

@@ -12,6 +12,20 @@ type VolumeData = {
   netChange: number;
 };
 
+function formatMarketCap(value: number): string {
+  if (value >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(2)}B`;
+  } else if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(2)}M`;
+  } else {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(value);
+  }
+}
+
+
 const MarketStatsTab = ({
   coinData,
   volumeData,
@@ -30,19 +44,19 @@ const MarketStatsTab = ({
     <div className="space-y-6">
       {/* Market Overview Stats */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-black/20 p-4 rounded-lg border border-gray-400/30">
+        <div className="p-4 border rounded-lg bg-black/20 border-gray-400/30">
           <div className="text-sm text-muted-foreground">Market Cap</div>
-          <div className="text-xl font-bold">$15M</div>
+          <div className="text-xl font-bold">{formatMarketCap(coinData.marketCap)}</div>
         </div>
-        <div className="bg-black/20 p-4 rounded-lg border border-gray-400/30">
+        <div className="p-4 border rounded-lg bg-black/20 border-gray-400/30">
           <div className="text-sm text-muted-foreground">Liquidity</div>
-          <div className="text-xl font-bold">$2.3M</div>
+          <div className="text-xl font-bold">{formatMarketCap(coinData.liquidity)}</div>
         </div>
-        <div className="bg-black/20 p-4 rounded-lg border border-gray-400/30">
+        <div className="p-4 border rounded-lg bg-black/20 border-gray-400/30">
           <div className="text-sm text-muted-foreground"># of Holders</div>
           <div className="text-xl font-bold">32K</div>
         </div>
-        <div className="bg-black/20 p-4 rounded-lg border border-gray-400/30">
+        <div className="p-4 border rounded-lg bg-black/20 border-gray-400/30">
           <div className="text-sm text-muted-foreground"># of Markets</div>
           <div className="text-xl font-bold">43</div>
         </div>
@@ -57,7 +71,7 @@ const MarketStatsTab = ({
         </div>
 
         {/* Column 2: Time Range Stats */}
-        <div className="bg-black/30 p-4 rounded-lg border border-gray-400/30">
+        <div className="p-4 border rounded-lg bg-black/30 border-gray-400/30">
           <div className="grid grid-cols-4 gap-4 mb-4">
             {volumeData.map((data) => (
               <button
@@ -85,10 +99,10 @@ const MarketStatsTab = ({
           </div>
           {/* Transaction Analysis */}
           <div className="space-y-4">
-            <div className="bg-black/20 p-4 rounded-lg border border-gray-400/30">
-              <div className="flex justify-between items-center mb-2">
+            <div className="p-4 border rounded-lg bg-black/20 border-gray-400/30">
+              <div className="flex items-center justify-between mb-2">
                 <div>
-                  <span className="text-sm text-muted-foreground mr-2">
+                  <span className="mr-2 text-sm text-muted-foreground">
                     TXNS
                   </span>
                   <span className="text-lg font-bold">16K</span>
@@ -96,27 +110,27 @@ const MarketStatsTab = ({
                 <div className="flex gap-20">
                   <div>
                     <span className="text-sm text-green-400">BUYS</span>
-                    <span className="text-sm text-muted-foreground ml-2">
+                    <span className="ml-2 text-sm text-muted-foreground">
                       {selectedData.buyVolume}K
                     </span>
                   </div>
                   <div>
                     <span className="text-sm text-red-400">SELLS</span>
-                    <span className="text-sm text-muted-foreground ml-2">
+                    <span className="ml-2 text-sm text-muted-foreground">
                       {selectedData.sellVolume}K
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+              <div className="h-2 overflow-hidden rounded-full bg-black/40">
                 <div
                   className="h-full bg-gradient-to-r from-green-400 to-red-400"
                   style={{ width: "100%" }}
                 />
               </div>
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center justify-between mb-2">
                 <div>
-                  <span className="text-sm text-muted-foreground mr-2">
+                  <span className="mr-2 text-sm text-muted-foreground">
                     VOLUME
                   </span>
                   <span className="text-lg font-bold">$3M</span>
@@ -124,19 +138,19 @@ const MarketStatsTab = ({
                 <div className="flex gap-20">
                   <div>
                     <span className="text-sm text-green-400">BUY VOL</span>
-                    <span className="text-sm text-muted-foreground ml-2">
+                    <span className="ml-2 text-sm text-muted-foreground">
                       ${selectedData.buyVolume}M
                     </span>
                   </div>
                   <div>
                     <span className="text-sm text-red-400">SELL VOL</span>
-                    <span className="text-sm text-muted-foreground ml-2">
+                    <span className="ml-2 text-sm text-muted-foreground">
                       ${selectedData.sellVolume}M
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+              <div className="h-2 overflow-hidden rounded-full bg-black/40">
                 <div
                   className="h-full bg-gradient-to-r from-green-400 to-red-400"
                   style={{ width: "100%" }}

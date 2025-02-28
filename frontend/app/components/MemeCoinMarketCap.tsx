@@ -25,7 +25,8 @@ import { SparklineChart } from "./SparklineChart";
 import type { Chain, FilterOption } from "./types";
 import { MarketFilters } from "./MarketFilters";
 import { useRouter } from "next/navigation";
-import { trendingCoins, type Coin } from "@/app/data/mockCoins";
+import { trendingCoins } from "@/app/data/mockCoins";
+import { TrendingCoin } from "@/app/types/coins";
 import { Input } from "@/components/ui/input";
 
 const chains: Chain[] = [
@@ -74,11 +75,6 @@ const chains: Chain[] = [
     name: "Arbitrum",
     logo: "https://cryptologos.cc/logos/arbitrum-arb-logo.png",
   },
-  {
-    id: "ton",
-    name: "TON",
-    logo: "https://cryptologos.cc/logos/ton-ton-logo.png",
-  },
 ];
 
 const filterOptions: FilterOption[] = [
@@ -123,13 +119,14 @@ const saveWatchlistToStorage = (watchlist: string[]) => {
     console.error("Failed to save watchlist to storage:", error);
   }
 };
-
 interface MemeCoinMarketCapProps {
   watchlistOnly?: boolean;
+  coins?: TrendingCoin[]; // Add coins prop
 }
 
 export function MemeCoinMarketCap({
   watchlistOnly = false,
+  coins = [], // Default to empty array
 }: MemeCoinMarketCapProps) {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
@@ -182,7 +179,7 @@ export function MemeCoinMarketCap({
       // Show inline login warning instead of alert
       const warningElement = document.createElement("div");
       warningElement.className =
-        "fixed bottom-4 right-4 bg-yellow-500/90 text-black p-4 rounded-lg shadow-lg z-50 flex items-center gap-2";
+        "fixed z-50 flex items-center gap-2 p-4 text-black rounded-lg shadow-lg bottom-4 right-4 bg-yellow-500/90";
       warningElement.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -221,11 +218,12 @@ export function MemeCoinMarketCap({
 
   // Filter and sort coins based on active filter and watchlist setting
   const filteredCoins = useMemo(() => {
-    let filtered = [...trendingCoins];
+    // Use provided coins data instead of trendingCoins
+    let filtered = [...coins];
 
     // Filter by favorites if watchlistOnly is true
     if (watchlistOnly) {
-      filtered = filtered.filter((coin) => favorites.includes(coin.id));
+      filtered = filtered.filter((coin) => favorites.includes(coin.address));
     }
 
     // Filter by search term
@@ -247,19 +245,35 @@ export function MemeCoinMarketCap({
     switch (activeFilter) {
       case "latest":
       case "new":
-        filtered = filtered.sort((a, b) => b.marketCap - a.marketCap);
+        filtered = filtered.sort(
+          (a, b) => parseFloat(b.marketCap) - parseFloat(a.marketCap)
+        );
         break;
       case "trending":
       case "gainers":
-        filtered = filtered.sort((a, b) => b.change24h - a.change24h);
+        filtered = filtered.sort((a, b) => {
+          // Parse change values (removing % and converting to numbers)
+          const changeA = parseFloat(a.change.replace("%", ""));
+          const changeB = parseFloat(b.change.replace("%", ""));
+          return changeB - changeA;
+        });
         break;
       case "visited":
-        filtered = filtered.sort((a, b) => b.volume24h - a.volume24h);
+        filtered = filtered.sort(
+          (a, b) => parseFloat(b.volume) - parseFloat(a.volume)
+        );
         break;
     }
 
     return filtered;
-  }, [activeFilter, selectedChain, favorites, watchlistOnly, searchTerm]);
+  }, [
+    activeFilter,
+    selectedChain,
+    favorites,
+    watchlistOnly,
+    coins,
+    searchTerm,
+  ]);
 
   const totalPages = Math.ceil(filteredCoins.length / itemsPerPage);
 
@@ -274,8 +288,8 @@ export function MemeCoinMarketCap({
     setCurrentPage(1);
   }, [activeFilter, selectedChain, watchlistOnly, favorites]);
 
-  const handleCoinClick = (coinId: string) => {
-    router.push(`/coins/${coinId}`);
+  const handleCoinClick = (coinAddress: string) => {
+    router.push(`/coins/${coinAddress}`);
   };
 
   return (
@@ -286,7 +300,7 @@ export function MemeCoinMarketCap({
         transition={{ duration: 0.5 }}
         className="w-full"
       >
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+        <div className="flex flex-col items-center justify-between gap-4 mb-6 md:flex-row">
           <MarketFilters
             chains={chains}
             filterOptions={filterOptions}
@@ -298,7 +312,7 @@ export function MemeCoinMarketCap({
 
           <div className="relative w-full md:w-auto md:min-w-[300px]">
             <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+              className="absolute text-gray-500 transform -translate-y-1/2 left-3 top-1/2"
               size={16}
             />
             <Input
@@ -306,65 +320,65 @@ export function MemeCoinMarketCap({
               placeholder="Search tokens by name or symbol..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 w-full"
+              className="w-full py-2 pr-4 pl-9"
             />
           </div>
         </div>
 
         {/* Table section */}
-        <div className="overflow-x-auto mt-4">
+        <div className="mt-4 overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left py-4 px-4"></th>
-                <th className="text-left py-4 px-4">#</th>
-                <th className="text-left py-4 px-4">Name</th>
-                <th className="text-right py-4 px-4">Price</th>
-                <th className="text-right py-4 px-4">1h %</th>
-                <th className="text-right py-4 px-4">24h %</th>
-                <th className="text-right py-4 px-4">7d %</th>
-                <th className="text-right py-4 px-4">Market Cap</th>
-                <th className="text-right py-4 px-4">Volume(24h)</th>
-                <th className="text-right py-4 px-4">Circulating Supply</th>
-                <th className="text-right py-4 px-4">Last 7 Days</th>
+                <th className="px-4 py-4 text-left"></th> {/* Star column */}
+                <th className="px-4 py-4 text-left">#</th>
+                <th className="px-4 py-4 text-left">Name</th>
+                <th className="px-4 py-4 text-right">Price</th>
+                {/* <th className="px-4 py-4 text-right">1h %</th> */}
+                <th className="px-4 py-4 text-right">24h %</th>
+                {/* <th className="px-4 py-4 text-right">7d %</th> */}
+                <th className="px-4 py-4 text-right">Market Cap</th>
+                <th className="px-4 py-4 text-right">Volume(24h)</th>
+                <th className="px-4 py-4 text-right"># Holders</th>
+                <th className="px-4 py-4 text-right">Last 7 Days</th>
               </tr>
             </thead>
             <tbody>
               {getCurrentPageItems().length > 0 ? (
                 getCurrentPageItems().map((coin, index) => (
                   <tr
-                    key={coin.id}
-                    className="border-b border-gray-800 hover:bg-gray-900/50 cursor-pointer transition-colors duration-200 hover:shadow-lg"
-                    onClick={() => handleCoinClick(coin.id)}
+                    key={coin.address}
+                    className="transition-colors duration-200 border-b border-gray-800 cursor-pointer hover:bg-gray-900/50 hover:shadow-lg"
+                    onClick={() => handleCoinClick(coin.address)}
                   >
-                    <td className="py-4 px-4">
+                    <td className="px-4 py-4">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleFavoriteToggle(coin.id);
+                          handleFavoriteToggle(coin.address);
                         }}
                       >
                         <Star
                           className={`h-4 w-4 ${
-                            favorites.includes(coin.id)
+                            favorites.includes(coin.address)
                               ? "text-yellow-500 fill-yellow-500"
                               : ""
                           }`}
                         />
                       </Button>
                     </td>
-                    <td className="py-4 px-4 text-gray-400">
+                    <td className="px-4 py-4 text-gray-400">
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                        <div className="flex-shrink-0 w-8 h-8 overflow-hidden rounded-full">
                           <img
-                            src={coin.logo}
+                            src={coin.image}
                             alt={`${coin.name} logo`}
-                            className="w-full h-full object-contain"
+                            className="object-contain w-full h-full"
                             onError={(e) => {
                               // Fallback if image fails to load
                               (e.target as HTMLImageElement).src =
@@ -374,73 +388,80 @@ export function MemeCoinMarketCap({
                         </div>
                         <div>
                           <span className="font-semibold">{coin.name}</span>
-                          <span className="text-gray-400 text-sm block">
+                          <span className="block text-sm text-gray-400">
                             {coin.symbol}
                           </span>
                         </div>
                       </div>
                     </td>
-                    <td className="text-right py-4 px-4">
-                      ${coin.price.toFixed(8)}
+                    <td className="px-4 py-4 text-right">${coin.price}</td>
+                    {/* <td
+                      className={`text-right py-4 px-4 ${
+                        !coin.change.startsWith("-")
+                          ? "text-green-500"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {!coin.change.startsWith("-") ? (
+                        <ArrowUp className="inline w-4 h-4" />
+                      ) : (
+                        <ArrowDown className="inline w-4 h-4" />
+                      )}
+                      {coin.change}
                     </td>
                     <td
                       className={`text-right py-4 px-4 ${
-                        coin.change1h > 0 ? "text-green-500" : "text-red-500"
+                        !coin.change.startsWith("-")
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
-                      {coin.change1h > 0 ? (
-                        <ArrowUp className="inline h-4 w-4" />
+                      {!coin.change.startsWith("-") ? (
+                        <ArrowUp className="inline w-4 h-4" />
                       ) : (
-                        <ArrowDown className="inline h-4 w-4" />
+                        <ArrowDown className="inline w-4 h-4" />
                       )}
-                      {Math.abs(coin.change1h)}%
-                    </td>
+                      {coin.change}
+                    </td> */}
                     <td
                       className={`text-right py-4 px-4 ${
-                        coin.change24h > 0 ? "text-green-500" : "text-red-500"
+                        !coin.change.startsWith("-")
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
-                      {coin.change24h > 0 ? (
-                        <ArrowUp className="inline h-4 w-4" />
+                      {!coin.change.startsWith("-") ? (
+                        <ArrowUp className="inline w-4 h-4" />
                       ) : (
-                        <ArrowDown className="inline h-4 w-4" />
+                        <ArrowDown className="inline w-4 h-4" />
                       )}
-                      {Math.abs(coin.change24h)}%
+                      {coin.change}
                     </td>
-                    <td
-                      className={`text-right py-4 px-4 ${
-                        coin.change7d > 0 ? "text-green-500" : "text-red-500"
-                      }`}
-                    >
-                      {coin.change7d > 0 ? (
-                        <ArrowUp className="inline h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="inline h-4 w-4" />
-                      )}
-                      {Math.abs(coin.change7d)}%
+                    <td className="px-4 py-4 text-right">
+                      ${parseFloat(coin.marketCap).toLocaleString()}
                     </td>
-                    <td className="text-right py-4 px-4">
-                      ${coin.marketCap.toLocaleString()}
-                    </td>
-                    <td className="text-right py-4 px-4">
+                    <td className="px-4 py-4 text-right">
                       <div className="flex flex-col items-end">
-                        <span>${coin.volume24h.toLocaleString()}</span>
+                        <span>${parseFloat(coin.volume).toLocaleString()}</span>
                         <span className="text-sm text-gray-400">
-                          {(coin.volume24h / coin.price).toLocaleString(
+                          {(coin.volume_24h / coin.price).toLocaleString(
                             undefined,
                             { maximumFractionDigits: 2 }
                           )}
                           {" " + coin.symbol}
+                          {coin.transactions} transactions
                         </span>
                       </div>
                     </td>
-                    <td className="text-right py-4 px-4">
-                      {coin.circulatingSupply.toLocaleString()} {coin.symbol}
+                    <td className="px-4 py-4 text-right">
+                      {coin.holders} holders
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="px-4 py-4">
                       <SparklineChart
-                        data={[...coin.sparkline]}
-                        color={coin.change7d > 0 ? "#22c55e" : "#ef4444"}
+                        data={coin.sparklineData}
+                        color={
+                          !coin.change.startsWith("-") ? "#22c55e" : "#ef4444"
+                        }
                       />
                     </td>
                   </tr>
@@ -450,7 +471,7 @@ export function MemeCoinMarketCap({
                   <td colSpan={11} className="py-8 text-center text-gray-400">
                     {watchlistOnly ? (
                       <div className="flex flex-col items-center gap-2">
-                        <Star className="h-8 w-8 mb-2" />
+                        <Star className="w-8 h-8 mb-2" />
                         <p className="text-lg font-medium">
                           Your watchlist is empty
                         </p>
@@ -466,7 +487,7 @@ export function MemeCoinMarketCap({
           </table>
         </div>
         {filteredCoins.length > 0 && (
-          <div className="mt-4 flex justify-center">
+          <div className="flex justify-center mt-4">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
