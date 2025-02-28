@@ -1,8 +1,11 @@
-import dayjs from "dayjs"
+import dayjs from "dayjs";
 
 // Helper function to create dates
-const futureDate = (days: number) => dayjs().add(days, "day").format()
-const pastDate = (days: number) => dayjs().subtract(days, "day").format()
+const futureDate = (days: number) => dayjs().add(days, "day").format();
+const pastDate = (days: number) => dayjs().subtract(days, "day").format();
+
+// Define the result type to match the Bet interface
+type BetResult = "yes" | "no";
 
 export const activeBets = [
   {
@@ -188,7 +191,7 @@ export const activeBets = [
     yesProbability: 0.375,
     noProbability: 0.625,
   },
-]
+];
 
 export const pastBets = [
   {
@@ -203,7 +206,7 @@ export const pastBets = [
     yesProbability: 0.1,
     noProbability: 0.9,
     isResolved: true,
-    result: "yes", // But yes was correct
+    result: "yes" as BetResult, // But yes was correct
   },
   {
     id: "4",
@@ -217,7 +220,7 @@ export const pastBets = [
     yesProbability: 0.8,
     noProbability: 0.2,
     isResolved: true,
-    result: "no", // But no was correct
+    result: "no" as BetResult, // But no was correct
   },
   {
     id: "5",
@@ -231,7 +234,7 @@ export const pastBets = [
     yesProbability: 0.27,
     noProbability: 0.73,
     isResolved: true,
-    result: "yes", // But yes was correct
+    result: "yes" as BetResult, // But yes was correct
   },
   {
     id: "6",
@@ -245,7 +248,6 @@ export const pastBets = [
     yesProbability: 0.33,
     noProbability: 0.67,
     isResolved: true,
-    result: "no",
+    result: "no" as BetResult,
   },
-]
-
+];
