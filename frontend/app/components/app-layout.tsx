@@ -33,33 +33,31 @@ export function AppLayout({ children, showFooter = false }: AppLayoutProps) {
   }, []);
 
   return (
-    <div className="relative min-h-screen">
-      <SiteHeader />
+    <div className="flex flex-col min-h-screen">
+      {/* Fixed header */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <SiteHeader />
+      </div>
 
-      <div className="flex">
+      {/* Main content area with sidebar */}
+      <div className="flex pt-16 flex-grow">
         {/* Left Sidebar - only shown when authenticated */}
         {isAuthenticated && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed top-[64px] left-0 z-10"
-          >
+          <div className="fixed top-16 left-0 bottom-0 z-40 w-[280px]">
             <SiteLeftbar />
-          </motion.div>
+          </div>
         )}
 
         {/* Main Content - adjust padding based on authentication status */}
         <main
-          className={`flex-1 pt-20 pb-16 ${
-            isAuthenticated ? "pl-[300px]" : ""
-          }`}
+          className={`flex-1 ${isAuthenticated ? "ml-[280px]" : ""} w-full`}
         >
           {children}
+
+          {/* Footer */}
+          {showFooter && <Footer />}
         </main>
       </div>
-
-      {showFooter && <Footer />}
     </div>
   );
 }

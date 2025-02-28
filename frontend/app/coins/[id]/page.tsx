@@ -229,8 +229,8 @@ export default function CoinPage() {
 
         <main
           className={`flex-1 overflow-y-auto ${
-            isAuthenticated ? "ml-[280px]" : ""
-          } ${coinData ? "pr-[400px]" : ""}`}
+            isAuthenticated ? "ml-0 md:ml-[280px]" : ""
+          } ${coinData ? "pr-0 lg:pr-[500px]" : ""}`}
         >
           <div className="container p-4">
             {loading ? (
@@ -243,26 +243,28 @@ export default function CoinPage() {
                 <div className="col-span-12">
                   {/* Chart Card */}
                   <Card className="mb-6 border border-gray-400/30">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle className="flex items-center gap-2 text-xl font-bold">
                         <span>{coinData.symbol}/USDT</span>
                         <span className="text-sm text-green-400">(+8.56%)</span>
                       </CardTitle>
-                      <div className="flex gap-2">
-                        {timeframes.map((timeframe) => (
-                          <Button
-                            key={timeframe}
-                            variant={
-                              selectedTimeframe === timeframe
-                                ? "default"
-                                : "outline"
-                            }
-                            size="sm"
-                            onClick={() => setSelectedTimeframe(timeframe)}
-                          >
-                            {timeframe}
-                          </Button>
-                        ))}
+                      <div className="overflow-x-auto w-full sm:w-auto">
+                        <div className="flex gap-2 min-w-max">
+                          {timeframes.map((timeframe) => (
+                            <Button
+                              key={timeframe}
+                              variant={
+                                selectedTimeframe === timeframe
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => setSelectedTimeframe(timeframe)}
+                            >
+                              {timeframe}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="w-full p-0">
@@ -274,32 +276,34 @@ export default function CoinPage() {
                   <Card className="border border-gray-400/30">
                     <CardContent className="p-4">
                       <Tabs defaultValue="market-stats">
-                        <TabsList className="grid grid-cols-6 mb-4">
-                          <TabsTrigger value="market-stats">
-                            <Globe className="w-4 h-4 mr-2" />
-                            Market Stats
-                          </TabsTrigger>
-                          <TabsTrigger value="holders">
-                            <Users className="w-4 h-4 mr-2" />
-                            Top Holders
-                          </TabsTrigger>
-                          <TabsTrigger value="traders">
-                            <Activity className="w-4 h-4 mr-2" />
-                            Traders
-                          </TabsTrigger>
-                          <TabsTrigger value="liquidity">
-                            <Layers className="w-4 h-4 mr-2" />
-                            Liquidity
-                          </TabsTrigger>
-                          <TabsTrigger value="bubble-map">
-                            <PieChart className="w-4 h-4 mr-2" />
-                            Bubble Map
-                          </TabsTrigger>
-                          <TabsTrigger value="wallets">
-                            <Wallet className="w-4 h-4 mr-2" />
-                            Active Wallets
-                          </TabsTrigger>
-                        </TabsList>
+                        <div className="overflow-x-auto pb-2">
+                          <TabsList className="inline-flex min-w-max mb-4">
+                            <TabsTrigger value="market-stats">
+                              <Globe className="w-4 h-4 mr-2" />
+                              Market Stats
+                            </TabsTrigger>
+                            <TabsTrigger value="holders">
+                              <Users className="w-4 h-4 mr-2" />
+                              Top Holders
+                            </TabsTrigger>
+                            <TabsTrigger value="traders">
+                              <Activity className="w-4 h-4 mr-2" />
+                              Traders
+                            </TabsTrigger>
+                            <TabsTrigger value="liquidity">
+                              <Layers className="w-4 h-4 mr-2" />
+                              Liquidity
+                            </TabsTrigger>
+                            <TabsTrigger value="bubble-map">
+                              <PieChart className="w-4 h-4 mr-2" />
+                              Bubble Map
+                            </TabsTrigger>
+                            <TabsTrigger value="wallets">
+                              <Wallet className="w-4 h-4 mr-2" />
+                              Active Wallets
+                            </TabsTrigger>
+                          </TabsList>
+                        </div>
 
                         {/* Tab Content */}
                         <TabsContent value="market-stats">

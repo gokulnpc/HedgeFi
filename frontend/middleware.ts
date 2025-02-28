@@ -8,9 +8,7 @@ const protectedRoutes = [
   "/watchlist",
   "/settings",
   "/launch",
-  "/portfolio",
   "/bets",
-  "/shill-manager",
 ];
 
 export function middleware(request: NextRequest) {
@@ -49,8 +47,6 @@ export const config = {
     "/watchlist/:path*",
     "/settings/:path*",
     "/launch/:path*",
-    "/portfolio/:path*",
     "/bets/:path*",
-    "/shill-manager/:path*",
   ],
 };

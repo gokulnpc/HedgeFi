@@ -2,9 +2,9 @@
 
 import { motion } from "framer-motion";
 import { AppLayout } from "../components/app-layout";
-import { PortfolioOverview } from "../portfolio/components/portfolio-overview";
-import { PortfolioChart } from "../portfolio/components/portfolio-chart";
-import { PortfolioAnalytics } from "../portfolio/components/portfolio-analytics";
+import { PortfolioOverview } from "./portfolio/components/portfolio-overview";
+import { PortfolioChart } from "./portfolio/components/portfolio-chart";
+import { PortfolioAnalytics } from "./portfolio/components/portfolio-analytics";
 import { BetsSection } from "./components/bets-section";
 import { LaunchedTokens } from "./components/launched-tokens";
 import { MemeNews } from "./components/meme-news";

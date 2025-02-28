@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import {
   ChevronDown,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
   MessageSquare,
   Clock,
   Bookmark,
+  Plus,
 } from "lucide-react";
 
 interface NavItemProps {
@@ -47,6 +49,10 @@ const NavItem = ({
     if (href) {
       router.push(href);
     }
+    // If it has sub-items, also toggle the expansion
+    if (hasSubItems && onToggle) {
+      onToggle();
+    }
   };
 
   // Handle click on the dropdown icon
@@ -66,10 +72,10 @@ const NavItem = ({
           : "hover:bg-white/5 text-gray-300 hover:text-white"
       }`}
     >
-      <span className="text-blue-400">{icon}</span>
-      <span className="flex-1" onClick={handleMainClick}>
-        {label}
-      </span>
+      <div className="flex items-center flex-1" onClick={handleMainClick}>
+        <span className="text-blue-400 mr-3">{icon}</span>
+        <span>{label}</span>
+      </div>
       {hasSubItems && (
         <span
           className="text-gray-500 hover:text-gray-300 p-1 rounded-full hover:bg-white/10"
@@ -155,17 +161,7 @@ export function SiteLeftbar() {
     if (pathname === "/" || pathname.includes("/dashboard")) {
       setActiveSection("dashboard");
       if (!expandedSections.includes("dashboard")) {
-        setExpandedSections([...expandedSections, "dashboard"]);
-      }
-    } else if (pathname === "/portfolio") {
-      setActiveSection("dashboard");
-      if (!expandedSections.includes("dashboard")) {
-        setExpandedSections([...expandedSections, "dashboard"]);
-      }
-    } else if (pathname === "/shill-manager") {
-      setActiveSection("dashboard");
-      if (!expandedSections.includes("dashboard")) {
-        setExpandedSections([...expandedSections, "dashboard"]);
+        setExpandedSections((prev) => [...prev, "dashboard"]);
       }
     } else if (
       pathname.includes("/chatbot") ||
@@ -173,12 +169,12 @@ export function SiteLeftbar() {
     ) {
       setActiveSection("hedge-bot");
       if (!expandedSections.includes("hedge-bot")) {
-        setExpandedSections([...expandedSections, "hedge-bot"]);
+        setExpandedSections((prev) => [...prev, "hedge-bot"]);
       }
     } else if (pathname.includes("/coins")) {
       setActiveSection("coins");
       if (!expandedSections.includes("coins")) {
-        setExpandedSections([...expandedSections, "coins"]);
+        setExpandedSections((prev) => [...prev, "coins"]);
       }
     } else if (pathname.includes("/settings")) {
       setActiveSection("settings");
@@ -188,12 +184,14 @@ export function SiteLeftbar() {
   }, [pathname, expandedSections]);
 
   const toggleSection = (section: string) => {
+    setActiveSection(section);
+
+    // Toggle the expanded state
     if (expandedSections.includes(section)) {
       setExpandedSections(expandedSections.filter((s) => s !== section));
     } else {
       setExpandedSections([...expandedSections, section]);
     }
-    setActiveSection(section);
   };
 
   // Mock chat history data
@@ -223,8 +221,8 @@ export function SiteLeftbar() {
   }
 
   return (
-    <div className="w-[280px] flex-shrink-0 bg-gray-900/50 backdrop-blur-sm border-r border-green-500/10 py-4 h-[calc(100vh-64px)] overflow-y-auto fixed top-16 left-0 z-10">
-      <nav className="space-y-1 px-2">
+    <div className="h-full overflow-y-auto bg-gray-900/50 backdrop-blur-sm border-r border-green-500/10 py-4">
+      <nav className="space-y-1 px-2 pb-20">
         {/* Dashboard Section */}
         <NavItem
           icon={<LayoutDashboard size={20} />}
@@ -248,69 +246,28 @@ export function SiteLeftbar() {
               <div className="pt-1 pb-1">
                 <SubNavItem
                   label="My Portfolio"
-                  href="/portfolio"
-                  isActive={pathname === "/portfolio"}
+                  href="/dashboard/portfolio"
+                  isActive={pathname === "/dashboard/portfolio"}
+                />
+                <SubNavItem
+                  label="Quick Swap"
+                  href="/dashboard/quick-swap"
+                  isActive={pathname === "/dashboard/quick-swap"}
                 />
                 <SubNavItem
                   label="My Bets"
-                  href="/dashboard/bets"
-                  isActive={pathname === "/dashboard/bets"}
+                  href="/dashboard/my-bets"
+                  isActive={pathname === "/dashboard/my-bets"}
                 />
                 <SubNavItem
                   label="My Tokens"
-                  href="/dashboard/tokens"
-                  isActive={pathname === "/dashboard/tokens"}
+                  href="/dashboard/my-tokens"
+                  isActive={pathname === "/dashboard/my-tokens"}
                 />
                 <SubNavItem
                   label="Shill Manager"
-                  href="/shill-manager"
-                  isActive={pathname === "/shill-manager"}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Coins Section */}
-        <NavItem
-          icon={<Coins size={20} />}
-          label="Coins"
-          href="/coins"
-          hasSubItems={true}
-          isActive={activeSection === "coins"}
-          isExpanded={expandedSections.includes("coins")}
-          onToggle={() => toggleSection("coins")}
-        />
-
-        <AnimatePresence>
-          {expandedSections.includes("coins") && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="pt-1 pb-1">
-                <SubNavItem
-                  label="All Coins"
-                  href="/coins"
-                  isActive={pathname === "/coins"}
-                />
-                <SubNavItem
-                  label="Trending"
-                  href="/coins/trending"
-                  isActive={pathname === "/coins/trending"}
-                />
-                <SubNavItem
-                  label="New Listings"
-                  href="/coins/new"
-                  isActive={pathname === "/coins/new"}
-                />
-                <SubNavItem
-                  label="Top Gainers"
-                  href="/coins/gainers"
-                  isActive={pathname === "/coins/gainers"}
+                  href="/dashboard/shill-manager"
+                  isActive={pathname === "/dashboard/shill-manager"}
                 />
               </div>
             </motion.div>
@@ -351,6 +308,19 @@ export function SiteLeftbar() {
                       className="w-full bg-gray-800/50 border border-gray-700 rounded-lg py-2 pl-9 pr-3 text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
+                </div>
+
+                {/* New Chat Button */}
+                <div className="px-4 py-2">
+                  <Link href={`/chatbot?new=true&t=${Date.now()}`}>
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                      size="sm"
+                    >
+                      <Plus size={16} />
+                      <span>New Chat</span>
+                    </Button>
+                  </Link>
                 </div>
 
                 {/* Chat History */}

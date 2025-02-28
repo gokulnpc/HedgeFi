@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AppLayout } from "../components/app-layout";
-import GridBackground from "../components/GridBackground";
+import { AppLayout } from "../../components/app-layout";
+import GridBackground from "../../components/GridBackground";
 import { PortfolioOverview } from "./components/portfolio-overview";
 import { PortfolioChart } from "./components/portfolio-chart";
 import { AssetTable } from "./components/asset-table";

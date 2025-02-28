@@ -26,6 +26,7 @@ import {
   Star,
   Settings,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -98,6 +99,7 @@ export function SiteHeader() {
     { label: "Marketplace", href: "/marketplace", icon: Search },
     { label: "Bets", href: "/bets", icon: Swords },
     { label: "Trading", href: "/trading", icon: TrendingUp },
+    { label: "Quick Swap", href: "/dashboard/quick-swap", icon: RefreshCw },
     { label: "Communities", href: "/communities", icon: Users },
   ];
 
@@ -138,7 +140,10 @@ export function SiteHeader() {
     >
       <div className="flex h-20 items-center px-4 md:px-6 lg:px-8 w-full">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link
+            href={isAuthenticated ? "/dashboard" : "/"}
+            className="flex items-center space-x-2"
+          >
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -199,13 +204,19 @@ export function SiteHeader() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/portfolio" className="cursor-pointer">
+                      <Link
+                        href="/dashboard/portfolio"
+                        className="cursor-pointer"
+                      >
                         <Wallet className="mr-2 h-4 w-4" />
                         <span>My Portfolio</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/shill-manager" className="cursor-pointer">
+                      <Link
+                        href="/dashboard/shill-manager"
+                        className="cursor-pointer"
+                      >
                         <Megaphone className="mr-2 h-4 w-4" />
                         <span>Shill Manager</span>
                       </Link>
