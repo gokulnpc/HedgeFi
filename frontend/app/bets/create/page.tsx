@@ -278,7 +278,7 @@ export default function CreateBet() {
   return (
     <AppLayout showFooter={false}>
       <GridBackground />
-      <div className="container max-w-4xl mx-auto px-4 pt-6 pb-16">
+      <div className="container max-w-full mx-auto px-4 pt-6 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -298,9 +298,9 @@ export default function CreateBet() {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-8"
+                  className="space-y-6"
                 >
-                  {/* Title */}
+                  {/* Title - Full Width */}
                   <FormField
                     control={form.control}
                     name="title"
@@ -322,7 +322,7 @@ export default function CreateBet() {
                     )}
                   />
 
-                  {/* Description */}
+                  {/* Description - Full Width */}
                   <FormField
                     control={form.control}
                     name="description"
@@ -341,239 +341,249 @@ export default function CreateBet() {
                     )}
                   />
 
-                  {/* Category */}
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="border-white/10">
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* End Date */}
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>End Date</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type="datetime-local"
-                              className="border-white/10"
-                              {...field}
-                            />
-                            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          When will the bet be resolved?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Initial Pool */}
-                  <FormField
-                    control={form.control}
-                    name="initialPool"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Initial Pool Amount (NEAR)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="1"
-                            step="0.1"
-                            placeholder="1.0"
-                            className="border-white/10"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>Minimum bet is 1 NEAR</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Twitter Handle (Required) */}
-                  <FormField
-                    control={form.control}
-                    name="twitterHandle"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-2">
-                          <FormLabel>Twitter Handle</FormLabel>
-                          {twitterInfo?.connected && !twitterHandleChanged && (
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-500/10 text-blue-500 border-blue-500/20"
+                  {/* Two Column Layout for remaining fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Left Column */}
+                    <div className="space-y-6">
+                      {/* Category */}
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
                             >
-                              Connected
-                            </Badge>
-                          )}
-                          {twitterInfo?.connected && twitterHandleChanged && (
-                            <Badge
-                              variant="outline"
-                              className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                            >
-                              Modified
-                            </Badge>
-                          )}
-                        </div>
-                        <FormControl>
-                          <div className="relative">
-                            <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="@username"
-                              className="border-white/10 pl-10"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                handleTwitterHandleChange(e.target.value);
-                              }}
-                            />
-                          </div>
-                        </FormControl>
-                        <div className="flex items-center justify-between mt-2">
-                          <FormDescription>
-                            Your Twitter handle is required for verification
-                          </FormDescription>
-                          {!twitterInfo?.connected && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleTwitterConnect}
-                              className="border-blue-500/20 text-blue-500 hover:bg-blue-500/10"
-                            >
-                              <Twitter className="mr-2 h-3 w-3" />
-                              Connect
-                            </Button>
-                          )}
-                          {twitterInfo?.connected && twitterHandleChanged && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleTwitterConnect}
-                              className="border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10"
-                            >
-                              <Twitter className="mr-2 h-3 w-3" />
-                              Update
-                            </Button>
-                          )}
-                        </div>
-                        {!twitterInfo?.connected && (
-                          <div className="flex items-center gap-2 p-3 mt-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                            <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                            <p className="text-xs text-yellow-500">
-                              You must connect your Twitter account to create
-                              predictions.
-                            </p>
-                          </div>
+                              <FormControl>
+                                <SelectTrigger className="border-white/10">
+                                  <SelectValue placeholder="Select a category" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      />
 
-                  {/* Image Upload (Optional) */}
-                  <FormField
-                    control={form.control}
-                    name="image"
-                    render={({ field: { value, onChange, ...field } }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-2">
-                          <FormLabel>Cover Image</FormLabel>
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-500/10 text-gray-400 border-gray-500/20"
-                          >
-                            Optional
-                          </Badge>
-                        </div>
-                        <FormControl>
-                          <div className="space-y-4">
-                            <div
-                              className={cn(
-                                "flex items-center justify-center border-2 border-dashed rounded-lg p-6 transition-colors",
-                                "border-white/10 hover:border-white/20"
-                              )}
-                            >
-                              <label
-                                htmlFor="image-upload"
-                                className="flex flex-col items-center gap-2 cursor-pointer"
-                              >
-                                {previewImage ? (
-                                  <div className="relative w-full aspect-video rounded-lg overflow-hidden">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={previewImage || "/placeholder.svg"}
-                                      alt="Preview"
-                                      className="object-cover"
-                                    />
-                                  </div>
-                                ) : (
-                                  <>
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                                    <span className="text-sm text-muted-foreground">
-                                      Click to upload or drag and drop
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      (If not provided, we'll generate one for
-                                      you)
-                                    </span>
-                                  </>
-                                )}
+                      {/* End Date */}
+                      <FormField
+                        control={form.control}
+                        name="endDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>End Date</FormLabel>
+                            <FormControl>
+                              <div className="relative">
                                 <Input
-                                  id="image-upload"
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    handleImageUpload(e);
-                                    onChange(e.target.files?.[0]);
-                                  }}
+                                  type="datetime-local"
+                                  className="border-white/10"
                                   {...field}
                                 />
-                              </label>
-                            </div>
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          Upload a cover image for your bet or let us generate
-                          one for you
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              </div>
+                            </FormControl>
+                            <FormDescription>
+                              When will the bet be resolved?
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                  {/* Submit Button */}
-                  <div className="flex justify-end gap-4">
+                      {/* Initial Pool */}
+                      <FormField
+                        control={form.control}
+                        name="initialPool"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Initial Pool Amount (NEAR)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="1"
+                                step="0.1"
+                                placeholder="1.0"
+                                className="border-white/10"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Minimum bet is 1 NEAR
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-6">
+                      {/* Twitter Handle (Required) */}
+                      <FormField
+                        control={form.control}
+                        name="twitterHandle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="flex items-center gap-2">
+                              <FormLabel>Twitter Handle</FormLabel>
+                              {twitterInfo?.connected &&
+                                !twitterHandleChanged && (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                  >
+                                    Connected
+                                  </Badge>
+                                )}
+                              {twitterInfo?.connected &&
+                                twitterHandleChanged && (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                                  >
+                                    Modified
+                                  </Badge>
+                                )}
+                            </div>
+                            <FormControl>
+                              <div className="relative">
+                                <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="@username"
+                                  className="border-white/10 pl-10"
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    handleTwitterHandleChange(e.target.value);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <div className="flex items-center justify-between mt-2">
+                              <FormDescription>
+                                Required for verification
+                              </FormDescription>
+                              {!twitterInfo?.connected && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleTwitterConnect}
+                                  className="border-blue-500/20 text-blue-500 hover:bg-blue-500/10"
+                                >
+                                  <Twitter className="mr-2 h-3 w-3" />
+                                  Connect
+                                </Button>
+                              )}
+                              {twitterInfo?.connected &&
+                                twitterHandleChanged && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleTwitterConnect}
+                                    className="border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10"
+                                  >
+                                    <Twitter className="mr-2 h-3 w-3" />
+                                    Update
+                                  </Button>
+                                )}
+                            </div>
+                            {!twitterInfo?.connected && (
+                              <div className="flex items-center gap-2 p-3 mt-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                                <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                                <p className="text-xs text-yellow-500">
+                                  Twitter account required for bets
+                                </p>
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Image Upload (Optional) */}
+                      <FormField
+                        control={form.control}
+                        name="image"
+                        render={({ field: { value, onChange, ...field } }) => (
+                          <FormItem>
+                            <div className="flex items-center gap-2">
+                              <FormLabel>Cover Image</FormLabel>
+                              <Badge
+                                variant="outline"
+                                className="bg-gray-500/10 text-gray-400 border-gray-500/20"
+                              >
+                                Optional
+                              </Badge>
+                            </div>
+                            <FormControl>
+                              <div className="space-y-4">
+                                <div
+                                  className={cn(
+                                    "flex items-center justify-center border-2 border-dashed rounded-lg p-4 transition-colors",
+                                    "border-white/10 hover:border-white/20"
+                                  )}
+                                >
+                                  <label
+                                    htmlFor="image-upload"
+                                    className="flex flex-col items-center gap-2 cursor-pointer"
+                                  >
+                                    {previewImage ? (
+                                      <div className="relative w-full aspect-video rounded-lg overflow-hidden">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={
+                                            previewImage || "/placeholder.svg"
+                                          }
+                                          alt="Preview"
+                                          className="object-cover"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <ImageIcon className="h-11 w-8 text-muted-foreground" />
+                                        <span className="text-sm text-muted-foreground text-center">
+                                          Click to upload or drag and drop
+                                        </span>
+                                        <span className="text-xs text-muted-foreground text-center">
+                                          (We'll generate one if not provided)
+                                        </span>
+                                      </>
+                                    )}
+                                    <Input
+                                      id="image-upload"
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        handleImageUpload(e);
+                                        onChange(e.target.files?.[0]);
+                                      }}
+                                      {...field}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Button - Full Width */}
+                  <div className="flex justify-end gap-4 pt-2">
                     <Button
                       type="button"
                       variant="outline"
