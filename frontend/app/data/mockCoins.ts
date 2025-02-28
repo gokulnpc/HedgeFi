@@ -11,6 +11,7 @@ export type Coin = {
   volume24h: number;
   circulatingSupply: number;
   sparkline: number[];
+  liquidity
   logo: string;
 };
 

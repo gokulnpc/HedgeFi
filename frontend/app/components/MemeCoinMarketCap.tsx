@@ -26,7 +26,7 @@ import type { Chain, FilterOption } from "./types";
 import { MarketFilters } from "./MarketFilters";
 import { useRouter } from "next/navigation";
 import { trendingCoins } from "@/app/data/mockCoins";
-import {TrendingCoin} from '@/app/types/coins'
+import { TrendingCoin } from "@/app/types/coins";
 import { Input } from "@/components/ui/input";
 
 const chains: Chain[] = [
@@ -245,7 +245,9 @@ export function MemeCoinMarketCap({
     switch (activeFilter) {
       case "latest":
       case "new":
-        filtered = filtered.sort((a, b) => parseFloat(b.marketCap) - parseFloat(a.marketCap));
+        filtered = filtered.sort(
+          (a, b) => parseFloat(b.marketCap) - parseFloat(a.marketCap)
+        );
         break;
       case "trending":
       case "gainers":
@@ -257,12 +259,21 @@ export function MemeCoinMarketCap({
         });
         break;
       case "visited":
-        filtered = filtered.sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume));
+        filtered = filtered.sort(
+          (a, b) => parseFloat(b.volume) - parseFloat(a.volume)
+        );
         break;
     }
 
     return filtered;
-  }, [activeFilter, selectedChain, favorites, watchlistOnly, coins, searchTerm]);
+  }, [
+    activeFilter,
+    selectedChain,
+    favorites,
+    watchlistOnly,
+    coins,
+    searchTerm,
+  ]);
 
   const totalPages = Math.ceil(filteredCoins.length / itemsPerPage);
 
@@ -323,12 +334,12 @@ export function MemeCoinMarketCap({
                 <th className="px-4 py-4 text-left">#</th>
                 <th className="px-4 py-4 text-left">Name</th>
                 <th className="px-4 py-4 text-right">Price</th>
-                <th className="px-4 py-4 text-right">1h %</th>
+                {/* <th className="px-4 py-4 text-right">1h %</th> */}
                 <th className="px-4 py-4 text-right">24h %</th>
-                <th className="px-4 py-4 text-right">7d %</th>
+                {/* <th className="px-4 py-4 text-right">7d %</th> */}
                 <th className="px-4 py-4 text-right">Market Cap</th>
                 <th className="px-4 py-4 text-right">Volume(24h)</th>
-                <th className="px-4 py-4 text-right">Circulating Supply</th>
+                <th className="px-4 py-4 text-right"># Holders</th>
                 <th className="px-4 py-4 text-right">Last 7 Days</th>
               </tr>
             </thead>
@@ -383,12 +394,12 @@ export function MemeCoinMarketCap({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      ${parseFloat(coin.marketCap) / 1000000} {/* Simplified for display */}
-                    </td>
-                    <td
+                    <td className="px-4 py-4 text-right">${coin.price}</td>
+                    {/* <td
                       className={`text-right py-4 px-4 ${
-                        !coin.change.startsWith("-") ? "text-green-500" : "text-red-500"
+                        !coin.change.startsWith("-")
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
                       {!coin.change.startsWith("-") ? (
@@ -400,7 +411,9 @@ export function MemeCoinMarketCap({
                     </td>
                     <td
                       className={`text-right py-4 px-4 ${
-                        !coin.change.startsWith("-") ? "text-green-500" : "text-red-500"
+                        !coin.change.startsWith("-")
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
                       {!coin.change.startsWith("-") ? (
@@ -409,10 +422,12 @@ export function MemeCoinMarketCap({
                         <ArrowDown className="inline w-4 h-4" />
                       )}
                       {coin.change}
-                    </td>
+                    </td> */}
                     <td
                       className={`text-right py-4 px-4 ${
-                        !coin.change.startsWith("-") ? "text-green-500" : "text-red-500"
+                        !coin.change.startsWith("-")
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
                       {!coin.change.startsWith("-") ? (
@@ -429,7 +444,7 @@ export function MemeCoinMarketCap({
                       <div className="flex flex-col items-end">
                         <span>${parseFloat(coin.volume).toLocaleString()}</span>
                         <span className="text-sm text-gray-400">
-                          {(coin.volume24h / coin.price).toLocaleString(
+                          {(coin.volume_24h / coin.price).toLocaleString(
                             undefined,
                             { maximumFractionDigits: 2 }
                           )}
@@ -444,7 +459,9 @@ export function MemeCoinMarketCap({
                     <td className="px-4 py-4">
                       <SparklineChart
                         data={coin.sparklineData}
-                        color={!coin.change.startsWith("-") ? "#22c55e" : "#ef4444"}
+                        color={
+                          !coin.change.startsWith("-") ? "#22c55e" : "#ef4444"
+                        }
                       />
                     </td>
                   </tr>

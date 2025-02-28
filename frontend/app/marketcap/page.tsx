@@ -6,7 +6,7 @@ import GridBackground from "../components/GridBackground";
 import { MemeCoinMarketCap } from "../components/MemeCoinMarketCap";
 import { fetchTrendingTokens } from "@/app/lib/coins";
 import { useState, useEffect } from "react";
-import {TrendingCoin} from '@/app/types/coins'
+import { TrendingCoin } from "@/app/types/coins";
 
 interface SparklineProps {
   data: number[];
@@ -52,6 +52,8 @@ export default function MarketcapPage(): JSX.Element {
         console.log("returned", tokens);
         const updatedCoins: TrendingCoin[] = tokens.map((token) => ({
           name: token.name,
+          price: token.price,
+          volume_24h: token.volume_24h,
           symbol: token.symbol,
           change: `${
             token.price_change_24h >= 0 ? "+" : ""

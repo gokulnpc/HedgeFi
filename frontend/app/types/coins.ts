@@ -9,8 +9,7 @@ export interface TopTokenHolders {
   data: TokenHolder[];
 }
 
-export 
-interface TrendingCoin {
+export interface TrendingCoin {
   name: string;
   symbol: string;
   change: string;
@@ -22,6 +21,8 @@ interface TrendingCoin {
   holders?: string;
   transactions?: string;
   address: string;
+  price: number;
+  volume_24h: number;
 }
 
 export interface TokenAttributes {
