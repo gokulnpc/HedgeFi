@@ -734,7 +734,7 @@ const CoinSwap = ({
 
                 {/* Swap Button */}
                 <Button
-                  className="w-full h-14 text-lg font-medium mt-4 bg-green-500 hover:bg-green-600 text-white rounded-xl"
+                  className="w-full h-14 text-lg font-medium mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
                   onClick={handleSwap}
                 >
                   {isAuthenticated ? "Swap now" : "Login to Swap"}
@@ -847,7 +847,7 @@ const CoinSwap = ({
                   </Button>
 
                   <Button
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => setShowSuccess(false)}
                   >
                     New Swap
