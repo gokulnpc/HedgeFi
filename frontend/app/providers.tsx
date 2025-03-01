@@ -4,6 +4,7 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WalletProvider } from "./providers/WalletProvider";
+import { AuthGuard } from "./providers/AuthGuard";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -52,7 +53,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             enableSystem
             disableTransitionOnChange
           >
-            <WalletProvider>{children}</WalletProvider>
+            <WalletProvider>
+              <AuthGuard>{children}</AuthGuard>
+            </WalletProvider>
           </NextThemesProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

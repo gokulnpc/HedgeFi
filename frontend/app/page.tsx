@@ -15,12 +15,21 @@ import {
   Sprout,
   TrendingUp,
   Eye,
+  Wallet,
 } from "lucide-react";
 import GridBackground from "./components/GridBackground";
 import { useState, useMemo, useEffect } from "react";
 import { MemeCoinMarketCap } from "./components/MemeCoinMarketCap";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 // Dummy data for trending coins (replace with your actual data)
 const trendingCoins = [
@@ -133,12 +142,15 @@ export default function Home(): JSX.Element {
     { id: "visited", label: "Most Visited", icon: Eye },
   ] as const;
 
-  // Redirect to dashboard if already authenticated
-  useEffect(() => {
-    const isAuthenticated =
-      localStorage.getItem("isAuthenticated") === "true" || isConnected;
+  // Check authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    if (isAuthenticated) {
+  useEffect(() => {
+    const savedAuth = localStorage.getItem("isAuthenticated") === "true";
+    setIsAuthenticated(isConnected || savedAuth);
+
+    // If authenticated, redirect to dashboard
+    if (isConnected || savedAuth) {
       router.push("/dashboard");
     }
   }, [isConnected, router]);
@@ -216,13 +228,25 @@ export default function Home(): JSX.Element {
               transition={{ delay: 0.6 }}
               className="flex gap-4"
             >
-              <Button size="lg" className="h-12 px-8">
-                Let's GOO!
+              <Button
+                size="lg"
+                className="h-12 px-8"
+                onClick={() => router.push("/")}
+              >
+                Get Started
               </Button>
               <Button size="lg" variant="outline" className="h-12 px-8">
                 View Demo
               </Button>
             </motion.div>
+
+            {/* Connect Wallet Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="mt-8 w-full max-w-md"
+            ></motion.div>
           </div>
         </section>
 

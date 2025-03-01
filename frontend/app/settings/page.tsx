@@ -10,10 +10,36 @@ import { NotificationSettings } from "./components/notification-settings";
 import { SecuritySettings } from "./components/security-settings";
 import { AISettings } from "./components/ai-settings";
 import { PreferenceSettings } from "./components/preference-settings";
-import { User, Share2, Bell, Shield, Bot, Settings2 } from "lucide-react";
+import {
+  User,
+  Share2,
+  Bell,
+  Shield,
+  Bot,
+  Settings2,
+  Wallet,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAccount } from "wagmi";
+import { useWallet } from "../providers/WalletProvider";
+import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
+  const { address, isConnected } = useAccount();
+  const { isAuthenticated } = useWallet();
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
+  // Update wallet address when connection status changes
+  useEffect(() => {
+    if (isConnected && address) {
+      setWalletAddress(address);
+    } else {
+      // Try to get from localStorage as fallback
+      const savedAddress = localStorage.getItem("userAddress");
+      setWalletAddress(savedAddress);
+    }
+  }, [isConnected, address]);
+
   return (
     <AppLayout showFooter={false}>
       <GridBackground />
@@ -42,6 +68,18 @@ export default function SettingsPage() {
               Customize your HedgeFi experience, manage integrations, and
               configure security preferences.
             </p>
+
+            {/* Connected Wallet Display */}
+            {walletAddress && (
+              <div className="flex items-center gap-2 mt-2 p-3 rounded-md bg-sky-500/10 border border-sky-500/20 w-fit">
+                <Wallet className="h-4 w-4 text-sky-500" />
+                <span className="text-sm font-medium">Connected Wallet:</span>
+                <span className="text-sm text-muted-foreground">
+                  {walletAddress.substring(0, 6)}...
+                  {walletAddress.substring(walletAddress.length - 4)}
+                </span>
+              </div>
+            )}
           </div>
         </motion.div>
 

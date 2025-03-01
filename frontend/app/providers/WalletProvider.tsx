@@ -111,12 +111,29 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Override disconnect to also disconnect wagmi
+  // Override disconnect to also disconnect wagmi and clear all auth data
   const handleDisconnect = useCallback(() => {
+    // Reset our reference
     processedAddressRef.current = null;
+
+    // Clear all authentication data
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userAddress");
+    Cookies.remove("isAuthenticated", { path: "/" });
+
+    // Disconnect from wallet store
     wallet.disconnect();
+
+    // Disconnect from wagmi
     wagmiDisconnect();
+
+    // Force redirect to home page
     router.push("/");
+
+    // Force a page reload to ensure all state is cleared
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   }, [wallet, wagmiDisconnect, router]);
 
   // Memoize the contract getter to prevent unnecessary re-renders

@@ -12,6 +12,7 @@ import {
   Users,
   Rocket,
   Target,
+  Settings2,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -36,10 +37,17 @@ export function SiteHeader() {
 
   // Load authentication state and user data from localStorage on component mount
   useEffect(() => {
-    // Skip effect if we already have the data from wagmi
+    // Check if connected via wagmi
     if (isConnected && address) {
       setIsAuthenticated(true);
       setUserAddress(address);
+      return;
+    }
+
+    // Clear authentication if disconnected
+    if (!isConnected) {
+      setIsAuthenticated(false);
+      setUserAddress(null);
       return;
     }
 
@@ -50,6 +58,9 @@ export function SiteHeader() {
     if (savedAuth === "true" && savedAddress) {
       setIsAuthenticated(true);
       setUserAddress(savedAddress);
+    } else {
+      setIsAuthenticated(false);
+      setUserAddress(null);
     }
   }, [isConnected, address]);
 
@@ -58,8 +69,6 @@ export function SiteHeader() {
       { label: "Marketcap", href: "/marketcap", icon: LineChart },
       { label: "Marketplace", href: "/marketplace", icon: Search },
       { label: "Bets", href: "/bets", icon: Swords },
-      { label: "Trading", href: "/trading", icon: TrendingUp },
-      { label: "Communities", href: "/communities", icon: Users },
     ],
     []
   );
@@ -69,6 +78,7 @@ export function SiteHeader() {
     (): NavItem[] => [
       { label: "Launch Tokens", href: "/launch", icon: Rocket },
       { label: "Create Bets", href: "/bets/create", icon: Target },
+      { label: "Quick Swap", href: "/swap", icon: LineChart },
     ],
     []
   );
