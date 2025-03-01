@@ -15,10 +15,22 @@ import {
   Sprout,
   TrendingUp,
   Eye,
+  Wallet,
 } from "lucide-react";
 import GridBackground from "./components/GridBackground";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MemeCoinMarketCap } from "./components/MemeCoinMarketCap";
+import { useAccount } from "wagmi";
+import { useRouter } from "next/navigation";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useWallet } from "./providers/WalletProvider";
 
 // Dummy data for trending coins (replace with your actual data)
 const trendingCoins = [
@@ -115,6 +127,8 @@ const trendingCoins = [
 ];
 
 export default function Home(): JSX.Element {
+  const router = useRouter();
+  const { isConnected, connect } = useWallet();
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -128,6 +142,19 @@ export default function Home(): JSX.Element {
     { id: "gainers", label: "Gainers", icon: TrendingUp },
     { id: "visited", label: "Most Visited", icon: Eye },
   ] as const;
+
+  // Check authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const savedAuth = localStorage.getItem("isAuthenticated") === "true";
+    setIsAuthenticated(isConnected || savedAuth);
+
+    // If authenticated, redirect to dashboard
+    if (isConnected || savedAuth) {
+      router.push("/dashboard");
+    }
+  }, [isConnected, router]);
 
   // Filter and sort coins based on active filter
   const filteredCoins = useMemo(() => {
@@ -157,6 +184,25 @@ export default function Home(): JSX.Element {
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     return filteredCoins.slice(start, end);
+  };
+
+  // Function to handle the "Get Started" button click
+  const handleGetStarted = async () => {
+    try {
+      // If not connected, try to connect wallet
+      if (!isConnected) {
+        await connect();
+        // The WalletProvider will handle redirection to dashboard after successful connection
+      } else {
+        // If already connected, just navigate to dashboard
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      // If connection fails, still navigate to dashboard
+      // User can connect wallet there if needed
+      router.push("/dashboard");
+    }
   };
 
   return (
@@ -202,13 +248,25 @@ export default function Home(): JSX.Element {
               transition={{ delay: 0.6 }}
               className="flex gap-4"
             >
-              <Button size="lg" className="h-12 px-8">
-                Let's GOO!
+              <Button
+                size="lg"
+                className="h-12 px-8"
+                onClick={handleGetStarted}
+              >
+                Get Started
               </Button>
               <Button size="lg" variant="outline" className="h-12 px-8">
                 View Demo
               </Button>
             </motion.div>
+
+            {/* Connect Wallet Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="mt-8 w-full max-w-md"
+            ></motion.div>
           </div>
         </section>
 

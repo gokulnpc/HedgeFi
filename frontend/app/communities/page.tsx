@@ -9,6 +9,7 @@ import { Search, Plus, Image, BarChart } from "lucide-react";
 import GridBackground from "../components/GridBackground";
 import { CommunityFilters } from "./community-filters";
 import { CommunityFeed } from "./community-feed";
+import { useAccount } from "wagmi";
 
 export default function CommunitiesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,13 +17,15 @@ export default function CommunitiesPage() {
     "all" | "bets" | "coins" | "discussions"
   >("all");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  // Use wagmi account hook
+  const { isConnected } = useAccount();
 
   // Check authentication status
   useEffect(() => {
     const savedAuth = localStorage.getItem("isAuthenticated");
-    setIsAuthenticated(savedAuth === "true");
-  }, []);
+    setIsAuthenticated(savedAuth === "true" || isConnected);
+  }, [isConnected]);
 
   return (
     <AppLayout showFooter={false}>
@@ -97,16 +100,14 @@ export default function CommunitiesPage() {
               </div>
             </motion.div>
           ) : (
-            showLoginPrompt && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-blue-500/10 border border-blue-500/20 text-blue-500 p-3 rounded-md mb-6"
-              >
-                Please sign in to create posts and interact with the community
-              </motion.div>
-            )
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-blue-500/10 border border-blue-500/20 text-blue-500 p-3 rounded-md mb-6"
+            >
+              Please sign in to create posts and interact with the community
+            </motion.div>
           )}
 
           <div className="grid grid-cols-12 gap-6">

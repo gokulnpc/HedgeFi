@@ -176,7 +176,7 @@ const CoinTrade = ({
                 className="w-full h-14 text-lg font-medium mt-4 bg-green-500 hover:bg-green-600 text-white rounded-xl"
                 onClick={handleTradeAction}
               >
-                {isAuthenticated ? `Buy ${symbol}` : "Login to Trade"}
+                {isAuthenticated ? `Buy ${symbol}` : "Connect Wallet"}
               </Button>
             </div>
           </TabsContent>
@@ -260,7 +260,7 @@ const CoinTrade = ({
                 className="w-full h-14 text-lg font-medium mt-4 bg-red-500 hover:bg-red-600 text-white rounded-xl"
                 onClick={handleTradeAction}
               >
-                {isAuthenticated ? `Sell ${symbol}` : "Login to Trade"}
+                {isAuthenticated ? `Sell ${symbol}` : "Connect Wallet"}
               </Button>
             </div>
           </TabsContent>

@@ -737,7 +737,7 @@ const CoinSwap = ({
                   className="w-full h-14 text-lg font-medium mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
                   onClick={handleSwap}
                 >
-                  {isAuthenticated ? "Swap now" : "Login to Swap"}
+                  {isAuthenticated ? "Swap now" : "Connect Wallet"}
                 </Button>
               </div>
             </>

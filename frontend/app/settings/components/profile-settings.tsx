@@ -21,6 +21,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useWallet } from "@/app/providers/WalletProvider";
 
 export function ProfileSettings() {
   const [displayName, setDisplayName] = useState("Crypto Ninja");
@@ -30,6 +31,40 @@ export function ProfileSettings() {
   const [walletAddress, setWalletAddress] = useState("0x1234...5678");
   const [showSavedMessage, setShowSavedMessage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use the wallet provider
+  const { connect, disconnect, isConnected, address } = useWallet();
+
+  // Load user data from localStorage on component mount
+  useEffect(() => {
+    // Load saved display name
+    const savedDisplayName = localStorage.getItem("displayName");
+    if (savedDisplayName) {
+      setDisplayName(savedDisplayName);
+    }
+
+    // Load saved avatar URL
+    const savedAvatarUrl = localStorage.getItem("avatarUrl");
+    if (savedAvatarUrl) {
+      setAvatarUrl(savedAvatarUrl);
+    }
+
+    // Load wallet address from localStorage or from wallet provider
+    const savedAddress = localStorage.getItem("userAddress");
+    if (savedAddress) {
+      const shortenedAddress = `${savedAddress.substring(
+        0,
+        6
+      )}...${savedAddress.substring(savedAddress.length - 4)}`;
+      setWalletAddress(shortenedAddress);
+    } else if (address) {
+      const shortenedAddress = `${address.substring(
+        0,
+        6
+      )}...${address.substring(address.length - 4)}`;
+      setWalletAddress(shortenedAddress);
+    }
+  }, [address]);
 
   // Function to handle image upload
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,92 +125,41 @@ export function ProfileSettings() {
     return () => clearTimeout(timeoutId);
   }, [displayName, username, email]);
 
-  // Connect to MetaMask
+  // Connect to MetaMask using the wallet provider
   const connectMetaMask = async () => {
-    if (typeof window.ethereum !== "undefined") {
+    if (isConnected) {
+      // If already connected, disconnect
+      disconnect();
+      setWalletAddress("0x1234...5678");
+      toast.success("Wallet disconnected successfully");
+    } else {
       try {
-        // Request accounts from MetaMask
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        });
+        // Connect using the wallet provider
+        await connect();
 
-        if (accounts.length > 0) {
-          const shortenedAddress = `${accounts[0].substring(
-            0,
-            6
-          )}...${accounts[0].substring(accounts[0].length - 4)}`;
-
-          setWalletAddress(shortenedAddress);
-
-          // Save the wallet address to localStorage
-          localStorage.setItem("userAddress", accounts[0]);
-
-          // Trigger storage event for cross-tab synchronization
-          const storageEvent = new StorageEvent("storage", {
-            key: "userAddress",
-            newValue: accounts[0],
-            url: window.location.href,
-          });
-          window.dispatchEvent(storageEvent);
-
-          toast.success("Wallet connected successfully");
-          saveSettings();
-        }
+        // The wallet address will be updated in the useEffect hook
+        toast.success("Wallet connected successfully");
       } catch (error) {
         toast.error("Failed to connect wallet");
         console.error(error);
       }
-    } else {
-      toast.error("MetaMask is not installed");
     }
   };
 
   // Connect a new wallet (prompts MetaMask to switch accounts)
   const connectNewWallet = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        // First disconnect current wallet
-        setWalletAddress("0x1234...5678");
+    try {
+      // First disconnect current wallet
+      disconnect();
+      setWalletAddress("0x1234...5678");
 
-        // Request to switch accounts
-        await window.ethereum.request({
-          method: "wallet_requestPermissions",
-          params: [{ eth_accounts: {} }],
-        });
+      // Then connect again to prompt for a new account
+      await connect();
 
-        // Then get the newly selected account
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        });
-
-        if (accounts.length > 0) {
-          const shortenedAddress = `${accounts[0].substring(
-            0,
-            6
-          )}...${accounts[0].substring(accounts[0].length - 4)}`;
-
-          setWalletAddress(shortenedAddress);
-
-          // Save the wallet address to localStorage
-          localStorage.setItem("userAddress", accounts[0]);
-
-          // Trigger storage event for cross-tab synchronization
-          const storageEvent = new StorageEvent("storage", {
-            key: "userAddress",
-            newValue: accounts[0],
-            url: window.location.href,
-          });
-          window.dispatchEvent(storageEvent);
-
-          toast.success("New wallet connected successfully");
-          saveSettings();
-        }
-      } catch (error) {
-        toast.error("Failed to connect new wallet");
-        console.error(error);
-      }
-    } else {
-      toast.error("MetaMask is not installed");
+      toast.success("New wallet connected successfully");
+    } catch (error) {
+      toast.error("Failed to connect new wallet");
+      console.error(error);
     }
   };
 
