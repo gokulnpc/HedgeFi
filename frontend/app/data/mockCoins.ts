@@ -11,7 +11,7 @@ export type Coin = {
   volume24h: number;
   circulatingSupply: number;
   sparkline: number[];
-  liquidity
+  liquidity: number;
   logo: string;
 };
 
@@ -22,6 +22,7 @@ export const trendingCoins: Coin[] = [
     name: "Dogecoin",
     symbol: "DOGE",
     price: 0.2455,
+    liquidity: 1000000,
     change1h: -0.14,
     change24h: 1.58,
     change7d: -9.93,
@@ -48,6 +49,7 @@ export const trendingCoins: Coin[] = [
       0.000016, 0.0000155, 0.0000158, 0.0000157, 0.0000156, 0.0000155,
       0.0000157, 0.0000156, 0.0000155, 0.0000158, 0.0000156, 0.00001558,
     ],
+    liquidity: 1000000,
     logo: "https://cryptologos.cc/logos/shiba-inu-shib-logo.png",
   },
   {
@@ -65,6 +67,7 @@ export const trendingCoins: Coin[] = [
       0.000098, 0.000096, 0.000095, 0.000097, 0.000096, 0.000094, 0.000095,
       0.000096, 0.000095, 0.000094, 0.000095, 0.00009562,
     ],
+    liquidity: 1000000,
     logo: "https://cryptologos.cc/logos/pepe-pepe-logo.png",
   },
   {
@@ -81,6 +84,7 @@ export const trendingCoins: Coin[] = [
     sparkline: [
       18.5, 17.8, 17.2, 16.8, 16.5, 16.2, 16.4, 16.3, 16.5, 16.4, 16.45, 16.48,
     ],
+    liquidity: 1000000,
     logo: "https://s2.coinmarketcap.com/static/img/coins/64x64/24383.png",
   },
   {
@@ -98,6 +102,7 @@ export const trendingCoins: Coin[] = [
       0.0000165, 0.0000162, 0.0000161, 0.000016, 0.0000159, 0.0000161, 0.000016,
       0.0000161, 0.0000159, 0.000016, 0.0000161, 0.00001606,
     ],
+    liquidity: 1000000,
     logo: "https://cryptologos.cc/logos/bonk-bonk-logo.png",
   },
 ];

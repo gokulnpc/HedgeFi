@@ -171,7 +171,7 @@ export default function CoinPage() {
             marketCap: tokenInfo.marketCap,
             volume24h: tokenInfo.volume24hr,
             liquidity: tokenInfo.liquidity,
-            circulatingSupply: tokenInfo.circulatingSupply, // Not provided in API
+            circulatingSupply: 0, // Not provided in API
             sparkline: [], // Not provided in API
             logo: tokenInfo.baseTokenImageUrl,
           };
@@ -244,12 +244,12 @@ export default function CoinPage() {
                 <div className="col-span-12">
                   {/* Chart Card */}
                   <Card className="mb-6 border border-gray-400/30">
-                    <CardHeader className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <CardTitle className="flex items-center gap-2 text-xl font-bold">
                         <span>{coinData.symbol}/USDT</span>
                         <span className="text-sm text-green-400">(+8.56%)</span>
                       </CardTitle>
-                      <div className="w-full overflow-x-auto sm:w-auto">
+                      <div className="overflow-x-auto w-full sm:w-auto">
                         <div className="flex gap-2 min-w-max">
                           {timeframes.map((timeframe) => (
                             <Button
@@ -277,8 +277,8 @@ export default function CoinPage() {
                   <Card className="border border-gray-400/30">
                     <CardContent className="p-4">
                       <Tabs defaultValue="market-stats">
-                        <div className="pb-2 overflow-x-auto">
-                          <TabsList className="inline-flex mb-4 min-w-max">
+                        <div className="overflow-x-auto pb-2">
+                          <TabsList className="inline-flex min-w-max mb-4">
                             <TabsTrigger value="market-stats">
                               <Globe className="w-4 h-4 mr-2" />
                               Market Stats
