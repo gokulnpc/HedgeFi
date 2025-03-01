@@ -1,8 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  ReactNode,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { useWalletStore, WalletState } from "../store/walletStore";
 import { ethers } from "ethers";
+import { useAccount, useDisconnect } from "wagmi";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 // Create context with additional methods
 interface WalletContextType extends WalletState {
@@ -29,22 +40,60 @@ interface WalletProviderProps {
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   // Get wallet state and methods from the store
   const wallet = useWalletStore();
+  const router = useRouter();
+
+  // Use a ref to track if we've already processed this connection
+  const processedAddressRef = useRef<string | null>(null);
+
+  // Use wagmi hooks
+  const { address, isConnected } = useAccount();
+  const { disconnect: wagmiDisconnect } = useDisconnect();
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled =
     typeof window !== "undefined" && !!window.ethereum;
 
-  // Auto-connect if previously authenticated
+  // Sync wagmi state with our wallet store
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
-
-    if (isAuthenticated && isMetaMaskInstalled && !wallet.isConnected) {
-      // Try to reconnect silently
-      wallet.connect().catch((error) => {
-        console.error("Failed to auto-connect wallet:", error);
-      });
+    // Skip if we've already processed this address or if nothing has changed
+    if (
+      (isConnected && address && processedAddressRef.current === address) ||
+      (!isConnected && !wallet.isConnected)
+    ) {
+      return;
     }
-  }, [wallet, isMetaMaskInstalled]);
+
+    if (isConnected && address) {
+      // Update our reference to prevent future unnecessary updates
+      processedAddressRef.current = address;
+
+      // Only update if the state actually changed
+      if (!wallet.isConnected || wallet.address !== address) {
+        // Update our wallet store with wagmi connection
+        wallet.updateWallet({
+          isConnected: true,
+          address: address,
+          isAuthenticated: true,
+        });
+
+        // Set authentication in localStorage and cookies
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userAddress", address);
+        Cookies.set("isAuthenticated", "true", { path: "/" });
+
+        // Redirect to dashboard after successful connection
+        if (window.location.pathname === "/") {
+          router.push("/dashboard");
+        }
+      }
+    } else if (!isConnected && wallet.isConnected) {
+      // Reset our reference
+      processedAddressRef.current = null;
+
+      // Disconnect our wallet store if wagmi disconnects
+      wallet.disconnect();
+    }
+  }, [isConnected, address, wallet, router]);
 
   // Listen for network changes
   useEffect(() => {
@@ -62,11 +111,38 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Override disconnect to also disconnect wagmi
+  const handleDisconnect = useCallback(() => {
+    processedAddressRef.current = null;
+    wallet.disconnect();
+    wagmiDisconnect();
+    router.push("/");
+  }, [wallet, wagmiDisconnect, router]);
+
+  // Memoize the contract getter to prevent unnecessary re-renders
+  const getContract = useCallback(
+    async (address: string, abi: any) => {
+      return wallet.getContract(address, abi);
+    },
+    [wallet]
+  );
+
+  // Memoize the connect function
+  const connect = useCallback(async () => {
+    return wallet.connect();
+  }, [wallet]);
+
   // Combine wallet state and methods with additional context properties
-  const contextValue: WalletContextType = {
-    ...wallet,
-    isMetaMaskInstalled,
-  };
+  const contextValue = useMemo(
+    () => ({
+      ...wallet,
+      isMetaMaskInstalled,
+      disconnect: handleDisconnect,
+      connect,
+      getContract,
+    }),
+    [wallet, isMetaMaskInstalled, handleDisconnect, connect, getContract]
+  );
 
   return (
     <WalletContext.Provider value={contextValue}>

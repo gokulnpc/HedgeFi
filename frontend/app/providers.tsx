@@ -3,7 +3,6 @@
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import ChatbotButton from "@/app/chatbot/components/ChatbotButton";
 import { WalletProvider } from "./providers/WalletProvider";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
@@ -53,10 +52,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             enableSystem
             disableTransitionOnChange
           >
-            <WalletProvider>
-              {children}
-              <ChatbotButton />
-            </WalletProvider>
+            <WalletProvider>{children}</WalletProvider>
           </NextThemesProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

@@ -175,7 +175,7 @@ export default function CoinPage() {
             sparkline: [], // Not provided in API
             logo: tokenInfo.baseTokenImageUrl,
           };
-          
+
           setCoinData(apiCoin);
           setLoading(false);
         } else {
@@ -186,7 +186,7 @@ export default function CoinPage() {
         console.error("Error fetching token info:", error);
         setLoading(false);
       }
-    }
+    };
     const savedAuth = localStorage.getItem("isAuthenticated");
     setIsAuthenticated(savedAuth === "true");
 
@@ -199,7 +199,7 @@ export default function CoinPage() {
   // Redirect if not authenticated for trading functionality
   const handleTradeAction = () => {
     if (!isAuthenticated) {
-      router.push("/signin?redirect=" + encodeURIComponent(`/coins/${id}`));
+      router.push("/");
       return;
     }
     // Handle trade action for authenticated users

@@ -17,8 +17,10 @@ import {
   Eye,
 } from "lucide-react";
 import GridBackground from "./components/GridBackground";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MemeCoinMarketCap } from "./components/MemeCoinMarketCap";
+import { useAccount } from "wagmi";
+import { useRouter } from "next/navigation";
 
 // Dummy data for trending coins (replace with your actual data)
 const trendingCoins = [
@@ -115,6 +117,8 @@ const trendingCoins = [
 ];
 
 export default function Home(): JSX.Element {
+  const router = useRouter();
+  const { isConnected } = useAccount();
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -128,6 +132,16 @@ export default function Home(): JSX.Element {
     { id: "gainers", label: "Gainers", icon: TrendingUp },
     { id: "visited", label: "Most Visited", icon: Eye },
   ] as const;
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    const isAuthenticated =
+      localStorage.getItem("isAuthenticated") === "true" || isConnected;
+
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isConnected, router]);
 
   // Filter and sort coins based on active filter
   const filteredCoins = useMemo(() => {

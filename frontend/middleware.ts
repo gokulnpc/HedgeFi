@@ -22,16 +22,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For client-side auth, we need to check cookies instead of localStorage
-  // This is a simple implementation - in a real app, you'd verify a JWT token
+  // Check for authentication using various methods
+  // 1. Our custom isAuthenticated cookie
+  // 2. RainbowKit/wagmi connection cookies
   const isAuthenticated =
-    request.cookies.get("isAuthenticated")?.value === "true";
+    request.cookies.get("isAuthenticated")?.value === "true" ||
+    request.cookies.get("wagmi.connected")?.value === "true" ||
+    request.cookies.get("wagmi.wallet")?.value !== undefined ||
+    request.cookies.get("siwe")?.value !== undefined;
 
-  // If not authenticated and trying to access a protected route, redirect to login
+  // If not authenticated and trying to access a protected route, redirect to the home page
   if (!isAuthenticated) {
-    const redirectUrl = new URL("/signin", request.url);
-    // Add the original URL as a redirect parameter
-    redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
+    const redirectUrl = new URL("/", request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
