@@ -4,6 +4,7 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ChatbotButton from "@/app/chatbot/components/ChatbotButton";
+import { WalletProvider } from "./providers/WalletProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -16,8 +17,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange
       >
-        {children}
-        <ChatbotButton />
+        <WalletProvider>
+          {children}
+          <ChatbotButton />
+        </WalletProvider>
       </NextThemesProvider>
     </QueryClientProvider>
   );

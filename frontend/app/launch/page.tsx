@@ -17,6 +17,15 @@ import { InputMethodSelector, type InputMethod } from "./input-method-selector";
 import { AIInputForm } from "./ai-input-form";
 import { RegenerationControls } from "./regeneration-controls";
 import { TokenFormSection } from "./token-form";
+import { useTokenStore, type Token } from "../store/tokenStore";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface TokenDetails {
   name: string;
@@ -57,6 +66,9 @@ export default function LaunchPage() {
   const [generatedDetails, setGeneratedDetails] = useState<TokenDetails | null>(
     null
   );
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [createdToken, setCreatedToken] = useState<Token | null>(null);
+  const addToken = useTokenStore((state) => state.addToken);
 
   const handleImageSelect = (file: File) => {
     setError("");
@@ -123,15 +135,22 @@ export default function LaunchPage() {
         if (!response.ok) throw new Error("Failed to upload image");
         const result = await response.json();
         imageUrl = result.url;
+        console.log("Uploaded image URL:", imageUrl); // Debug log
       } else if (aiImageUrl) {
         imageUrl = aiImageUrl;
+        console.log("AI image URL:", imageUrl); // Debug log
       }
 
       if (!imageUrl) {
         throw new Error("Failed to process image");
       }
 
-      await fetch("/api/create-token", {
+      // For development, if the API call would fail, use a local placeholder
+      if (!imageUrl.startsWith("http") && !imageUrl.startsWith("/")) {
+        imageUrl = "/placeholder.svg";
+      }
+
+      const response = await fetch("/api/create-token", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -142,7 +161,32 @@ export default function LaunchPage() {
         }),
       });
 
-      router.push("/dashboard");
+      const tokenData = await response.json();
+
+      // Create a new token object
+      const newToken: Token = {
+        id: tokenData.id || Date.now().toString(),
+        name: data.name,
+        symbol: data.symbol,
+        imageUrl, // Ensure imageUrl is set
+        description: data.description || "",
+        price: "$0.00",
+        priceChange: 0,
+        marketCap: "$0",
+        holders: "0",
+        volume24h: "$0",
+        launchDate: new Date().toISOString().split("T")[0],
+        chain: data.chain || "ETH",
+        status: "active",
+        fundingRaised: "0",
+      };
+
+      console.log("New token created:", newToken); // Debug log
+
+      // Add token to store
+      addToken(newToken);
+      setCreatedToken(newToken);
+      setShowSuccessDialog(true);
     } catch (error) {
       console.error("Error creating token:", error);
       setError("Failed to create token. Please try again.");
@@ -287,6 +331,62 @@ export default function LaunchPage() {
           </motion.div>
         </div>
       </div>
+
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <Check className="h-4 w-4 text-green-500" />
+              </div>
+              Token Created Successfully
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {createdToken && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  {createdToken && (
+                    <img
+                      src={createdToken.imageUrl || "/placeholder.svg"}
+                      alt={createdToken.name || "Token"}
+                      className="h-12 w-12 rounded-full"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-medium">{createdToken?.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {createdToken?.symbol}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  router.push("/dashboard/my-tokens");
+                }}
+              >
+                View My Tokens
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  router.push("/marketplace");
+                }}
+              >
+                Go to Marketplace
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

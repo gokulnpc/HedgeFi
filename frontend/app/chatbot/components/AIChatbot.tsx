@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ReactMarkdown from "react-markdown";
 import {
   Fish,
   ArrowLeftRight,
@@ -25,9 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useChatStore } from "../store";
-import { Message } from "@/types/chat";
+import { Message as BaseMessage } from "@/types/chat";
 import ThinkingMessage from "./ThinkingMessage";
 import { sendChatMessage } from "../service";
+import { ChatSwapInterface } from "./ChatSwapInterface/index";
+import type { Message, SwapMessageContent } from "@/types/chat";
 
 // Map of icon components
 const icons = {
@@ -81,6 +84,11 @@ export default function AIChatbot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFollowUpActions, setShowFollowUpActions] = useState(false);
   const searchParams = useSearchParams();
+  const [showSwapInterface, setShowSwapInterface] = useState(false);
+
+  // Type guard for SwapMessageContent
+  const isSwapContent = (content: any): content is SwapMessageContent =>
+    typeof content === "object" && content.type === "swap";
 
   // Check if we need to start a new chat
   useEffect(() => {
@@ -124,6 +132,49 @@ export default function AIChatbot() {
     }
   }, [input, scrollToBottom]);
 
+  const handleSwapComplete = (
+    fromAmount: string,
+    fromToken: string,
+    toAmount: string,
+    toToken: string
+  ) => {
+    // Add a success message to the chat
+    const successMessage: Message = {
+      id: Date.now().toString(),
+      content: `✅ Successfully swapped ${fromAmount} ${fromToken} to ${toAmount} ${toToken}`,
+      isBot: true,
+      timestamp: new Date().toISOString(),
+    };
+    addMessage(successMessage);
+    setShowSwapInterface(false);
+  };
+
+  const handleSwapRequest = (content: string) => {
+    // Check if the message is a swap request
+    const isSwapRequest =
+      content.toLowerCase().includes("swap") ||
+      content.toLowerCase().includes("exchange") ||
+      content.toLowerCase().includes("trade");
+
+    if (isSwapRequest) {
+      // Extract token symbols if mentioned
+      const tokens = content.match(/[A-Z]{2,}/g) || [];
+      const swapMessage: Message = {
+        id: Date.now().toString(),
+        content: {
+          type: "swap",
+          fromToken: tokens[0],
+          toToken: tokens[1],
+        } as SwapMessageContent,
+        isBot: true,
+        timestamp: new Date().toISOString(),
+      };
+      addMessage(swapMessage);
+      return true;
+    }
+    return false;
+  };
+
   const handleSend = async (content: string, file?: File) => {
     if ((!content.trim() && !file) || isThinking) return;
 
@@ -139,7 +190,6 @@ export default function AIChatbot() {
 
     // Add file if present
     if (file) {
-      // In a real app, you would upload the file to a server and get a URL
       userMessage.file = {
         name: file.name,
         url: URL.createObjectURL(file),
@@ -147,21 +197,16 @@ export default function AIChatbot() {
       };
     }
 
-    // Convert to ContentWithUser and add to store
-    addMessage({
-      id: userMessage.id,
-      content: userMessage.content,
-      isBot: false,
-      timestamp: userMessage.timestamp,
-    });
-
+    addMessage(userMessage);
     setInput("");
 
-    try {
-      // Send message to API - the service will handle adding the bot message to the store
-      await sendChatMessage(content, file);
+    // Check if it's a swap request
+    if (handleSwapRequest(content)) {
+      return;
+    }
 
-      // Show follow-up actions after bot response
+    try {
+      await sendChatMessage(content, file);
       setShowFollowUpActions(true);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -182,20 +227,34 @@ export default function AIChatbot() {
     setShowFollowUpActions(false);
   };
 
-  const handleCopy = (content: string) => {
-    navigator.clipboard.writeText(content);
+  const handleCopy = (content: string | SwapMessageContent) => {
+    if (typeof content === "string") {
+      navigator.clipboard.writeText(content);
+    }
+  };
+
+  const handleSpeak = (content: string | SwapMessageContent) => {
+    if (typeof content === "string") {
+      const utterance = new SpeechSynthesisUtterance(content);
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleEdit = (message: Message) => {
     setEditingMessageId(message.id);
-    setEditingContent(message.content);
+    if (typeof message.content === "string") {
+      setEditingContent(message.content);
+    }
   };
 
   const handleSaveEdit = () => {
     if (!editingMessageId) return;
 
-    // In a real app, you would update the message in the store
-    // For now, we'll just update the local state
+    // Find the message being edited
+    const messageToEdit = messages.find((msg) => msg.id === editingMessageId);
+    if (!messageToEdit || typeof messageToEdit.content !== "string") return;
+
+    // Update the message in the store
     const updatedMessages = messages.map((msg) =>
       msg.id === editingMessageId ? { ...msg, content: editingContent } : msg
     );
@@ -245,11 +304,6 @@ export default function AIChatbot() {
     }
   };
 
-  const handleSpeak = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
-
   const handleRegenerate = async (messageId: string) => {
     setIsThinking(true);
 
@@ -262,7 +316,8 @@ export default function AIChatbot() {
       .slice(0, messageIndex)
       .reverse()
       .find((m) => !m.isBot);
-    if (!previousUserMessage) return;
+    if (!previousUserMessage || typeof previousUserMessage.content !== "string")
+      return;
 
     // Remove the old bot message and all messages after it
     const newMessages = messages.slice(0, messageIndex);
@@ -352,134 +407,216 @@ export default function AIChatbot() {
         transition={{ duration: 0.3 }}
         className="flex-1 overflow-y-auto p-4 space-y-4 mt-2"
       >
-        {messages.map((message) => (
-          <motion.div
-            key={message.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "flex gap-3",
-              message.isBot ? "items-start" : "items-start flex-row-reverse"
-            )}
-          >
-            <Avatar>
-              {message.isBot ? (
-                <>
-                  <AvatarImage src="/hedgefi-bot.png" />
-                  <AvatarFallback>
-                    <Bot className="h-5 w-5" />
-                  </AvatarFallback>
-                </>
-              ) : (
-                <>
-                  <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback>U</AvatarFallback>
-                </>
-              )}
-            </Avatar>
-            <div
+        {messages.map((message) => {
+          const messageContent = message.content;
+          const isStringContent = typeof messageContent === "string";
+          const isSwapContent = (content: any): content is SwapMessageContent =>
+            typeof content === "object" && content.type === "swap";
+
+          return (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               className={cn(
-                "flex flex-col gap-2",
-                message.isBot ? "items-start" : "items-end"
+                "flex gap-3",
+                message.isBot ? "items-start" : "items-start flex-row-reverse"
               )}
             >
-              {editingMessageId === message.id ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={editingContent}
-                    onChange={(e) => setEditingContent(e.target.value)}
-                    className="min-w-[300px]"
-                    autoFocus
-                  />
-                  <Button size="sm" onClick={handleSaveEdit}>
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingMessageId(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "rounded-lg px-4 py-2 max-w-[80%]",
-                    message.isBot
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-primary text-primary-foreground"
-                  )}
-                >
-                  <p className="text-sm">{message.content}</p>
-                  {message.file && (
-                    <div className="mt-2 p-2 bg-background/10 rounded flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      <a
-                        href={message.file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm underline"
-                      >
-                        {message.file.name}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+              <Avatar>
                 {message.isBot ? (
+                  <>
+                    <AvatarImage src="/hedgefi-bot.png" />
+                    <AvatarFallback>
+                      <Bot className="h-5 w-5" />
+                    </AvatarFallback>
+                  </>
+                ) : (
+                  <>
+                    <AvatarImage src="/placeholder.svg" />
+                    <AvatarFallback>U</AvatarFallback>
+                  </>
+                )}
+              </Avatar>
+              <div
+                className={cn(
+                  "flex flex-col gap-2",
+                  message.isBot ? "items-start" : "items-end"
+                )}
+              >
+                {editingMessageId === message.id ? (
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleCopy(message.content)}
-                    >
-                      <Copy className="h-3 w-3" />
+                    <Input
+                      value={editingContent}
+                      onChange={(e) => setEditingContent(e.target.value)}
+                      className="min-w-[300px]"
+                      autoFocus
+                    />
+                    <Button size="sm" onClick={handleSaveEdit}>
+                      Save
                     </Button>
                     <Button
+                      size="sm"
                       variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleSpeak(message.content)}
+                      onClick={() => setEditingMessageId(null)}
                     >
-                      <Volume2 className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleRegenerate(message.id)}
-                    >
-                      <RefreshCw className="h-3 w-3" />
+                      Cancel
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleCopy(message.content)}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleEdit(message)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
+                  <div
+                    className={cn(
+                      "rounded-lg px-4 py-2 max-w-[80%]",
+                      message.isBot
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-primary text-primary-foreground"
+                    )}
+                  >
+                    {message.isBot ? (
+                      isStringContent ? (
+                        <ReactMarkdown
+                          components={{
+                            p: ({ node, ...props }) => (
+                              <p
+                                className="text-sm whitespace-pre-wrap"
+                                {...props}
+                              />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong className="font-bold" {...props} />
+                            ),
+                            em: ({ node, ...props }) => (
+                              <em className="italic" {...props} />
+                            ),
+                            ol: ({ node, ...props }) => (
+                              <ol
+                                className="list-decimal pl-6 my-2"
+                                {...props}
+                              />
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <ul className="list-disc pl-6 my-2" {...props} />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <li className="my-1" {...props} />
+                            ),
+                            h1: ({ node, ...props }) => (
+                              <h1
+                                className="text-xl font-bold my-3"
+                                {...props}
+                              />
+                            ),
+                            h2: ({ node, ...props }) => (
+                              <h2
+                                className="text-lg font-bold my-2"
+                                {...props}
+                              />
+                            ),
+                            h3: ({ node, ...props }) => (
+                              <h3
+                                className="text-base font-bold my-2"
+                                {...props}
+                              />
+                            ),
+                            code: ({ node, ...props }) => (
+                              <code
+                                className="bg-gray-800 px-1 py-0.5 rounded text-xs"
+                                {...props}
+                              />
+                            ),
+                            blockquote: ({ node, ...props }) => (
+                              <blockquote
+                                className="border-l-2 border-gray-500 pl-4 my-2 italic"
+                                {...props}
+                              />
+                            ),
+                          }}
+                        >
+                          {messageContent}
+                        </ReactMarkdown>
+                      ) : isSwapContent(messageContent) ? (
+                        <ChatSwapInterface
+                          defaultFromToken={messageContent.fromToken}
+                          defaultToToken={messageContent.toToken}
+                          onSwapComplete={handleSwapComplete}
+                        />
+                      ) : null
+                    ) : (
+                      <div className="text-sm whitespace-pre-wrap">
+                        {isStringContent ? messageContent : ""}
+                      </div>
+                    )}
+                    {message.file && (
+                      <div className="mt-2 p-2 bg-background/10 rounded flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        <a
+                          href={message.file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm underline"
+                        >
+                          {message.file.name}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                  {message.isBot ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleCopy(messageContent)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleSpeak(messageContent)}
+                      >
+                        <Volume2 className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleRegenerate(message.id)}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleCopy(messageContent)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleEdit(message)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
         {isThinking && <ThinkingMessage />}
         <div ref={messagesEndRef} />
       </motion.div>

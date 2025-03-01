@@ -37,6 +37,10 @@ import Marquee from "react-fast-marquee";
 import { AppLayout } from "../components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTokenStore } from "../store/tokenStore";
+
+const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
+const DEFAULT_CHAIN_LOGO = "/chain-placeholder.svg";
 
 const chains: Chain[] = [
   {
@@ -220,6 +224,7 @@ const mockTokens: MemeToken[] = [
 
 const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
   const needsMarquee = token.name.length > 15;
+  const [imageError, setImageError] = useState(false);
 
   return (
     <motion.div
@@ -232,13 +237,38 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
       <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10">
         {/* Image Container */}
         <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
-          <div className="aspect-square relative overflow-hidden">
-            <Image
-              src={token.imageUrl || "/placeholder.svg"}
-              alt={token.name}
-              fill
-              className="object-cover"
+          <div className="aspect-square relative overflow-hidden bg-gray-900">
+            {/* Use a div with background image as fallback for external images */}
+            <div
+              className="w-full h-full absolute inset-0"
+              style={{
+                backgroundImage: `url(${DEFAULT_TOKEN_IMAGE})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
             />
+
+            {/* Next.js Image with error handling */}
+            {!imageError && (
+              <div className="w-full h-full relative">
+                <Image
+                  src={
+                    token.imageUrl && token.imageUrl.startsWith("http")
+                      ? token.imageUrl
+                      : token.imageUrl || DEFAULT_TOKEN_IMAGE
+                  }
+                  alt={token.name}
+                  width={400}
+                  height={400}
+                  className="object-cover"
+                  priority={index < 4}
+                  onError={() => setImageError(true)}
+                  unoptimized={
+                    !!(token.imageUrl && token.imageUrl.startsWith("http"))
+                  }
+                />
+              </div>
+            )}
 
             {/* Network Badge */}
             <div className="absolute top-4 left-4 z-20">
@@ -247,13 +277,16 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
                   (chain) =>
                     chain.id === token.chain && (
                       <div key={chain.id} className="flex items-center gap-1.5">
-                        <Image
-                          src={chain.logo || "/placeholder.svg"}
-                          alt={chain.name}
-                          width={14}
-                          height={14}
-                          className="rounded-full"
-                        />
+                        <div className="w-3.5 h-3.5 rounded-full bg-gray-700 overflow-hidden">
+                          <Image
+                            src={DEFAULT_CHAIN_LOGO}
+                            alt={chain.name}
+                            width={14}
+                            height={14}
+                            className="rounded-full"
+                            unoptimized
+                          />
+                        </div>
                         <span className="text-[11px] font-medium text-white">
                           {chain.name}
                         </span>
@@ -386,8 +419,40 @@ export default function MarketplacePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  // Get tokens from store
+  const storeTokens = useTokenStore((state) => state.tokens);
+
+  // Combine mock tokens with store tokens
+  const allTokens = useMemo(() => {
+    // Convert mock tokens to match Token interface
+    const convertedMockTokens = mockTokens.map((token) => ({
+      ...token,
+      id: token.symbol,
+      volume24h: "$" + (Math.random() * 100000).toFixed(2),
+      holders: (Math.random() * 1000).toFixed(0),
+      launchDate: new Date().toISOString().split("T")[0],
+      status: "active" as const,
+      fundingRaised: "0",
+      imageUrl: token.imageUrl || DEFAULT_TOKEN_IMAGE, // Use default placeholder
+    }));
+
+    // Ensure store tokens have valid imageUrl
+    const validatedStoreTokens = storeTokens.map((token) => ({
+      ...token,
+      imageUrl: token.imageUrl || DEFAULT_TOKEN_IMAGE,
+    }));
+
+    // Combine and remove duplicates based on symbol
+    const combined = [...convertedMockTokens, ...validatedStoreTokens];
+    const uniqueTokens = Array.from(
+      new Map(combined.map((token) => [token.symbol, token])).values()
+    );
+
+    return uniqueTokens;
+  }, [storeTokens]);
+
   const filteredTokens = useMemo(() => {
-    let filtered = mockTokens.filter(
+    let filtered = allTokens.filter(
       (token) =>
         (token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           token.symbol.toLowerCase().includes(searchTerm.toLowerCase())) &&
@@ -399,12 +464,24 @@ export default function MarketplacePage() {
         (a, b) => Math.abs(b.priceChange) - Math.abs(a.priceChange)
       );
     } else {
-      // For "latest", we'll just use the default order
-      filtered = [...filtered];
+      // For "latest", sort by launch date (newest first)
+      filtered = [...filtered].sort((a, b) => {
+        // First prioritize tokens from the store (user-created tokens)
+        const aIsFromStore = storeTokens.some((token) => token.id === a.id);
+        const bIsFromStore = storeTokens.some((token) => token.id === b.id);
+
+        if (aIsFromStore && !bIsFromStore) return -1;
+        if (!aIsFromStore && bIsFromStore) return 1;
+
+        // Then sort by launch date
+        return (
+          new Date(b.launchDate).getTime() - new Date(a.launchDate).getTime()
+        );
+      });
     }
 
     return filtered;
-  }, [searchTerm, activeFilter, selectedChain]);
+  }, [searchTerm, activeFilter, selectedChain, allTokens, storeTokens]);
 
   const totalPages = Math.ceil(filteredTokens.length / itemsPerPage);
   const currentTokens = filteredTokens.slice(

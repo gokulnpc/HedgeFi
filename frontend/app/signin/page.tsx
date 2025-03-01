@@ -7,54 +7,43 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Apple, Facebook, Github, Mail, Twitter } from "lucide-react";
 import { MetamaskFox } from "../components/icons/metamask-fox";
-import { ethers } from "ethers";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Cookies from "js-cookie";
+import { useWallet } from "../providers/WalletProvider";
 
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
 export default function SignIn() {
-  const [account, setAccount] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "/dashboard";
 
+  // Use the wallet context
+  const {
+    connect,
+    address,
+    isConnected,
+    isAuthenticated,
+    isMetaMaskInstalled,
+  } = useWallet();
+
   // Check if already logged in
   useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
     if (isAuthenticated) {
       router.push(redirectPath);
     }
-  }, [router, redirectPath]);
+  }, [isAuthenticated, router, redirectPath]);
 
   const loginWithMetaMask = async () => {
     try {
-      // Always request accounts to prompt Metamask confirmation
-      await window.ethereum.request({ method: "eth_requestAccounts" });
+      if (!isMetaMaskInstalled) {
+        alert(
+          "MetaMask is not installed. Please install MetaMask to continue."
+        );
+        window.open("https://metamask.io/download/", "_blank");
+        return;
+      }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-
-      console.log("Connected address:", address);
-      setAccount(address);
-
-      const message = "Sign this message to verify your identity";
-      const signature = await signer.signMessage(message);
-      console.log("Signature:", signature);
-
-      // Save authentication state to localStorage
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userAddress", address);
-
-      // Set a cookie for server-side authentication (middleware)
-      // Set to expire in 7 days
-      Cookies.set("isAuthenticated", "true", { expires: 7, path: "/" });
+      await connect();
 
       // Set logged in state to show success message
       setIsLoggedIn(true);
@@ -73,7 +62,6 @@ export default function SignIn() {
     e.preventDefault();
     // Mock successful login
     localStorage.setItem("isAuthenticated", "true");
-    Cookies.set("isAuthenticated", "true", { expires: 7, path: "/" });
     setIsLoggedIn(true);
 
     setTimeout(() => {
@@ -164,7 +152,7 @@ export default function SignIn() {
             </div>
 
             {/* Show login status */}
-            {account && (
+            {address && (
               <div className="text-center mt-4">
                 {isLoggedIn ? (
                   <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500">
@@ -173,7 +161,7 @@ export default function SignIn() {
                   </div>
                 ) : (
                   <div className="text-sm text-green-500">
-                    Connected as: {account}
+                    Connected as: {address}
                   </div>
                 )}
               </div>
