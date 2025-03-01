@@ -30,6 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useWallet } from "./providers/WalletProvider";
 
 // Dummy data for trending coins (replace with your actual data)
 const trendingCoins = [
@@ -127,7 +128,7 @@ const trendingCoins = [
 
 export default function Home(): JSX.Element {
   const router = useRouter();
-  const { isConnected } = useAccount();
+  const { isConnected, connect } = useWallet();
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -185,6 +186,25 @@ export default function Home(): JSX.Element {
     return filteredCoins.slice(start, end);
   };
 
+  // Function to handle the "Get Started" button click
+  const handleGetStarted = async () => {
+    try {
+      // If not connected, try to connect wallet
+      if (!isConnected) {
+        await connect();
+        // The WalletProvider will handle redirection to dashboard after successful connection
+      } else {
+        // If already connected, just navigate to dashboard
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      // If connection fails, still navigate to dashboard
+      // User can connect wallet there if needed
+      router.push("/dashboard");
+    }
+  };
+
   return (
     <AppLayout showFooter={false}>
       <GridBackground />
@@ -231,7 +251,7 @@ export default function Home(): JSX.Element {
               <Button
                 size="lg"
                 className="h-12 px-8"
-                onClick={() => router.push("/")}
+                onClick={handleGetStarted}
               >
                 Get Started
               </Button>
