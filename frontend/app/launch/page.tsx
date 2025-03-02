@@ -115,7 +115,7 @@ export default function LaunchPage() {
 
       if (!response.ok) throw new Error("Failed to generate image");
 
-      const {data} = await response.json();
+      const { data } = await response.json();
       const imageBase64 = data.image_file;
 
       // Convert base64 to binary
@@ -133,7 +133,7 @@ export default function LaunchPage() {
 
       // Create File object from blob
       const file = new File([blob], "ai-generated.png", { type: "image/png" });
-      console.log("force update")
+      console.log("force update");
 
       // console.log("file", file);
 
@@ -183,7 +183,7 @@ export default function LaunchPage() {
         description: data.description || "",
         price: "$0.00",
         priceChange: 0,
-        marketCap: "$0",
+        marketCap: "0",
         holders: "0",
         volume24h: "$0",
         launchDate: new Date().toISOString().split("T")[0],

@@ -147,8 +147,8 @@ export default function TokenDetailPage() {
             description: foundToken.description || "No description available",
             imageUrl: imageUrl,
             price: "0.000033", // Default price, should be calculated from token data
-            marketCap: 0 + "k",
-            priceChange: 0, // Random price change for now
+            marketCap: (Number(foundToken.raised) / 1e18).toFixed(2) + " ETH",
+            priceChange: Math.random() * 20 - 10, // Random price change for now
             fundingRaised: foundToken.raised.toString(),
             chain: "ethereum", // Default to ethereum, should be determined from the chain ID
             volume24h: "0$",
@@ -490,18 +490,18 @@ export default function TokenDetailPage() {
                             Market Cap
                           </div>
                           <div className="text-xl font-semibold">
-                            ${token?.marketCap}
+                            {token?.marketCap}
                           </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-lg p-4">
+                        {/* <div className="bg-black/20 rounded-lg p-4">
                           <div className="text-muted-foreground text-sm mb-1">
                             Volume 24h
                           </div>
                           <div className="text-xl font-semibold">
                             {token?.volume24h}
                           </div>
-                        </div>
+                        </div> */}
 
                         <div className="bg-black/20 rounded-lg p-4">
                           <div className="text-muted-foreground text-sm mb-1">

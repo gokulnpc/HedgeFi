@@ -179,6 +179,8 @@ export async function buyToken(
     const cost = await factory.getCost(tokenSale.sold);
     const totalCost = cost * amount;
 
+    console.log("totalCost", totalCost);
+
     // Create the transaction
     const transaction = await factory
       .connect(signer)
