@@ -159,24 +159,50 @@ export async function buyToken(
   amount: bigint
 ): Promise<{ success: boolean; error?: any }> {
   try {
-    if (!tokenSale.isOpen) return { success: false };
+    if (!tokenSale.isOpen)
+      return { success: false, error: "Token sale is not open" };
 
     const { factory, signer } = await loadFactoryContract();
 
+    // Check if wallet is connected
+    if (!window.ethereum || !window.ethereum.selectedAddress) {
+      // Trigger wallet connection dialog
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+
+      // If still not connected after dialog, return error
+      if (!window.ethereum.selectedAddress) {
+        return { success: false, error: "Wallet not connected" };
+      }
+    }
+
+    // Get the cost for the tokens
     const cost = await factory.getCost(tokenSale.sold);
     const totalCost = cost * amount;
 
+    // Create the transaction
     const transaction = await factory
       .connect(signer)
       .buy(tokenSale.token, ethers.parseUnits(amount.toString(), 18), {
         value: totalCost,
       });
 
+    // Wait for the transaction to be mined
     const receipt = await transaction.wait();
     return { success: receipt.status === 1 };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error buying token:", error);
-    return { success: false, error };
+
+    // Handle specific error cases
+    if (error.code === 4001) {
+      return { success: false, error: "Transaction rejected by user" };
+    } else if (error.code === -32603) {
+      return {
+        success: false,
+        error: "Internal JSON-RPC error. Check your wallet balance.",
+      };
+    }
+
+    return { success: false, error: error.message || "Unknown error occurred" };
   }
 }
 
@@ -268,38 +294,74 @@ async function fetchMetadata(
   }
 }
 
+export async function getPriceForTokens(tokenSale: TokenSale, amount: bigint) {
+  const CAP_AMOUNT = ethers.parseUnits("10000", 18); // 10,000 tokens in wei
+  const MIN_AMOUNT = ethers.parseUnits("1", 18); // 1 token in wei
 
+  // Ensure amount is correctly converted to wei (smallest unit)
+  const amountInWei = ethers.parseUnits(amount.toString(), 18);
 
-export async function getPriceForTokens(tokenSale: TokenSale,amount: bigint){
-  const CAP_AMOUNT = ethers.parseUnits("10000", 18);
-  const amountEthers = ethers.parseUnits(amount.toString(), 18);
-  if (tokenSale.isOpen === false || amountEthers > CAP_AMOUNT){
+  console.log("CAP_AMOUNT:", CAP_AMOUNT.toString());
+  console.log("MIN_AMOUNT:", MIN_AMOUNT.toString());
+  console.log("amountInWei:", amountInWei.toString());
+  console.log("amount", amount);
+
+  // Validate amount against contract constraints
+  if (
+    !tokenSale.isOpen ||
+    amountInWei < MIN_AMOUNT ||
+    amountInWei > CAP_AMOUNT
+  ) {
+    // console.error("Error: Amount is out of bounds or sale is closed.");
     return 0;
   }
-  const { factory, signer } = await loadFactoryContract();
-  const cost = await factory.getPriceForTokens(tokenSale.token, amount);
-  console.log("getPriceForTokens: ", getPriceForTokens);
+
+  const { factory } = await loadFactoryContract();
+
+  console.log(
+    "Calling getPriceForTokens with:",
+    tokenSale.token,
+    amountInWei.toString()
+  );
+
+  // Call contract function
+  const cost = await factory.getPriceForTokens(tokenSale.token, amountInWei);
+
+  console.log("getPriceForTokens result:", cost.toString());
+
   return cost;
 }
 
-export async function getEstimatedTokensForEth(tokenSale: TokenSale, ethAmount: bigint){
+export async function getEstimatedTokensForEth(
+  tokenSale: TokenSale,
+  ethAmount: bigint
+) {
   const ethAmountEthers = ethers.parseUnits(ethAmount.toString(), 18);
-  if (tokenSale.isOpen === true){
+  if (tokenSale.isOpen === true) {
     return 0;
   }
   const { factory } = await loadFactoryContract();
-  const tokens = await factory.getEstimatedTokensForEth(tokenSale.token, ethAmountEthers);
+  const tokens = await factory.getEstimatedTokensForEth(
+    tokenSale.token,
+    ethAmountEthers
+  );
   console.log("getEstimatedTokensForEth: ", getEstimatedTokensForEth);
   return tokens;
 }
 
-export async function getEstimatedEthForTokens(tokenSale: TokenSale, tokenAmount: bigint){
+export async function getEstimatedEthForTokens(
+  tokenSale: TokenSale,
+  tokenAmount: bigint
+) {
   const tokenAmountEthers = ethers.parseUnits(tokenAmount.toString(), 18);
-  if (tokenSale.isOpen === true){
+  if (tokenSale.isOpen === true) {
     return 0;
   }
   const { factory } = await loadFactoryContract();
-  const eth = await factory.getEstimatedEthForTokens(tokenSale.token, tokenAmountEthers);
+  const eth = await factory.getEstimatedEthForTokens(
+    tokenSale.token,
+    tokenAmountEthers
+  );
   console.log("getEstimatedEthForTokens: ", getEstimatedEthForTokens);
   return eth;
 }
