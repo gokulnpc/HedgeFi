@@ -20,6 +20,7 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBettingService } from "@/services/BettingService";
+import { usePinataService } from "@/services/PinataService";
 import { ethers } from "ethers";
 
 import { Button } from "@/components/ui/button";
@@ -120,10 +121,14 @@ export default function CreateBet() {
     connected: boolean;
   } | null>(null);
   const [twitterHandleChanged, setTwitterHandleChanged] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const router = useRouter();
 
   // Initialize the betting service
   const bettingService = useBettingService();
+  // Initialize the Pinata service
+  const pinataService = usePinataService();
 
   // Check authentication status and Twitter connection
   useEffect(() => {
@@ -171,14 +176,37 @@ export default function CreateBet() {
     try {
       setIsSubmitting(true);
 
-      // If no image was uploaded, generate one
+      // If a file was selected but not yet uploaded to IPFS, upload it now
       let imageUrl = "/placeholder.svg"; // Default placeholder
-      if (!previewImage) {
+      if (selectedFile) {
+        try {
+          setIsUploadingImage(true);
+          imageUrl = await pinataService.uploadToIPFS(selectedFile);
+        } catch (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          toast({
+            title: "Image Upload Failed",
+            description:
+              "Could not upload image to IPFS. Using placeholder instead.",
+            variant: "destructive",
+          });
+          // If image upload fails, try to generate one
+          const generatedImage = await generateCoverImage(values.title);
+          imageUrl = generatedImage;
+        } finally {
+          setIsUploadingImage(false);
+        }
+      } else if (previewImage && previewImage.startsWith("data:")) {
+        // If there's a preview image but no file (e.g. from FileReader), generate one
         const generatedImage = await generateCoverImage(values.title);
-        setPreviewImage(generatedImage);
         imageUrl = generatedImage;
-      } else {
+      } else if (previewImage) {
+        // If there's already an IPFS URL, use it
         imageUrl = previewImage;
+      } else {
+        // Generate a default image
+        const generatedImage = await generateCoverImage(values.title);
+        imageUrl = generatedImage;
       }
 
       // Save the Twitter handle to user settings
@@ -224,7 +252,7 @@ export default function CreateBet() {
         });
 
         // Redirect to bets page
-        // router.push("/bets");
+        router.push("/bets");
       } catch (contractError) {
         console.error("Contract error creating bet:", contractError);
 
@@ -257,14 +285,40 @@ export default function CreateBet() {
   };
 
   // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to IPFS in the background
+    try {
+      setIsUploadingImage(true);
+      const ipfsUrl = await pinataService.uploadToIPFS(file);
+      setPreviewImage(ipfsUrl);
+      toast({
+        title: "Success!",
+        description: "Image uploaded to IPFS successfully",
+        className: "bg-green-500 text-white",
+      });
+    } catch (error) {
+      console.error("Error uploading to IPFS:", error);
+      toast({
+        title: "Upload Error",
+        description:
+          "Failed to upload image to IPFS. The image will be uploaded when you submit the form.",
+        variant: "destructive",
+      });
+      // Keep the local preview but don't set the IPFS URL
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -640,16 +694,60 @@ export default function CreateBet() {
                                             alt="Preview"
                                             className="object-cover"
                                           />
+                                          {isUploadingImage && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                              <div className="text-center">
+                                                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-400" />
+                                                <p className="text-sm text-white">
+                                                  Uploading to IPFS...
+                                                </p>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {previewImage.startsWith(
+                                            "https://"
+                                          ) && (
+                                            <div className="absolute top-2 right-2">
+                                              <Badge className="bg-blue-500 text-white">
+                                                Stored on IPFS
+                                              </Badge>
+                                            </div>
+                                          )}
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 text-white"
+                                            onClick={() => {
+                                              setPreviewImage(null);
+                                              setSelectedFile(null);
+                                            }}
+                                            disabled={isUploadingImage}
+                                          >
+                                            Change
+                                          </Button>
                                         </div>
                                       ) : (
                                         <>
-                                          <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                                          <span className="text-sm text-muted-foreground text-center">
-                                            Click to upload or drag and drop
-                                          </span>
-                                          <span className="text-xs text-muted-foreground text-center">
-                                            (We'll generate one if not provided)
-                                          </span>
+                                          {isUploadingImage ? (
+                                            <div className="py-8 text-center">
+                                              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-400" />
+                                              <span className="text-sm text-muted-foreground">
+                                                Uploading image to IPFS...
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <>
+                                              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                              <span className="text-sm text-muted-foreground text-center">
+                                                Click to upload or drag and drop
+                                              </span>
+                                              <span className="text-xs text-muted-foreground text-center">
+                                                (We'll generate one if not
+                                                provided)
+                                              </span>
+                                            </>
+                                          )}
                                         </>
                                       )}
                                       <Input
@@ -686,13 +784,18 @@ export default function CreateBet() {
                       </Button>
                       <Button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUploadingImage}
                         className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600"
                       >
                         {isSubmitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Creating...
+                          </>
+                        ) : isUploadingImage ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading Image...
                           </>
                         ) : (
                           <>

@@ -13,152 +13,151 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { ethers } from "ethers";
 import GridBackground from "@/app/components/GridBackground";
-import { useWalletStore } from "@/app/store/walletStore";
-import { activeBets } from "../data";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
-  AlertCircle,
-  Info,
-  ArrowRight,
-  CheckCircle,
-  XCircle,
-  Loader2,
-} from "lucide-react";
+import { useBettingService } from "@/services/BettingService";
+import { useWalletClient } from "wagmi";
+import { AlertCircle, Info, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 export default function PlaceBetPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const betId = searchParams.get("id");
-
-  // Wallet state
-  const { isConnected, connect, balance, addFunds, withdrawFunds, getBalance } =
-    useWalletStore();
+  const { data: walletClient } = useWalletClient();
+  const bettingService = useBettingService();
 
   // Bet state
   const [bet, setBet] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [betAmount, setBetAmount] = useState("10");
+  const [betAmount, setBetAmount] = useState("1"); // Fixed bet amount
   const [betSide, setBetSide] = useState<"yes" | "no">("yes");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("100");
-  const [isDepositing, setIsDepositing] = useState(false);
-  const [estimatedGasFee, setEstimatedGasFee] = useState("0.005");
-  const [totalCost, setTotalCost] = useState("0");
 
   // Fetch bet details
   useEffect(() => {
-    if (betId) {
-      // Find the bet in the active bets
-      const foundBet = activeBets.find((b) => b.id === betId);
-      if (foundBet) {
-        setBet(foundBet);
-      }
-    }
-    setIsLoading(false);
-  }, [betId]);
-
-  // Calculate total cost when bet amount changes
-  useEffect(() => {
-    const amount = parseFloat(betAmount) || 0;
-    const gas = parseFloat(estimatedGasFee);
-    setTotalCost((amount + gas).toFixed(3));
-  }, [betAmount, estimatedGasFee]);
-
-  // Handle wallet connection
-  const handleConnectWallet = async () => {
-    try {
-      await connect();
-      toast({
-        title: "Wallet Connected",
-        description: "Your wallet has been connected successfully.",
-      });
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
-      toast({
-        title: "Connection Failed",
-        description: "Failed to connect your wallet. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle deposit
-  const handleDeposit = async () => {
-    try {
-      setIsDepositing(true);
-      // Simulate blockchain transaction
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Add funds to wallet
-      const amount = parseFloat(depositAmount);
-      if (isNaN(amount) || amount <= 0) {
-        throw new Error("Invalid amount");
+    async function fetchBetDetails() {
+      if (!betId) {
+        setIsLoading(false);
+        return;
       }
 
-      addFunds(amount, "0x" + Math.random().toString(16).substring(2, 10));
+      try {
+        // Fetch all bets from the blockchain
+        const allBets = await bettingService.getAllBets();
+        console.log("Fetched bets for place-bet page:", allBets);
 
-      toast({
-        title: "Deposit Successful",
-        description: `${amount} ETH has been added to your wallet.`,
-      });
+        // Find the specific bet by ID
+        const foundBet = allBets.find((bet) => String(bet.id) === betId);
 
-      setDepositAmount("100");
-    } catch (error) {
-      console.error("Error depositing funds:", error);
-      toast({
-        title: "Deposit Failed",
-        description: "Failed to deposit funds. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDepositing(false);
+        if (foundBet) {
+          // Format bet data for display
+          const currentDate = new Date();
+          const endDateTimestamp = foundBet.endDate
+            ? Number(foundBet.endDate) * 1000
+            : currentDate.getTime() + 30 * 24 * 60 * 60 * 1000;
+
+          const endDate = new Date(endDateTimestamp);
+          const isActive = currentDate < endDate && !foundBet.isClosed;
+
+          const joinAmount = foundBet.amount
+            ? ethers.formatEther(foundBet.amount.toString())
+            : "0";
+
+          const poolAmount = foundBet.initialPoolAmount
+            ? ethers.formatEther(foundBet.initialPoolAmount.toString())
+            : "0";
+
+          setBetAmount(joinAmount);
+          // Format bet for UI
+          setBet({
+            id: String(foundBet.id),
+            title: foundBet.title || `Bet #${foundBet.id}`,
+            description: foundBet.description || "No description provided",
+            category: foundBet.category || "Uncategorized",
+            createdBy: foundBet.creator || "Unknown",
+            endDate: endDate.toISOString(),
+            endDateFormatted: endDate.toLocaleString(),
+            isActive: isActive,
+            status: isActive ? "active" : "closed",
+            poolAmount: poolAmount || "0",
+            joinAmount: joinAmount || "0",
+            imageUrl: foundBet.imageURL || "/placeholder.svg",
+            participants:
+              (Number(foundBet.supportCount) || 0) +
+              (Number(foundBet.againstCount) || 0),
+            votesYes: Number(foundBet.supportCount) || 0,
+            votesNo: Number(foundBet.againstCount) || 0,
+            yesProbability:
+              foundBet.supportCount &&
+              foundBet.supportCount + foundBet.againstCount > 0
+                ? (Number(foundBet.supportCount) /
+                    (Number(foundBet.supportCount) +
+                      Number(foundBet.againstCount))) *
+                  100
+                : 50,
+            noProbability:
+              foundBet.againstCount &&
+              foundBet.supportCount + foundBet.againstCount > 0
+                ? (Number(foundBet.againstCount) /
+                    (Number(foundBet.supportCount) +
+                      Number(foundBet.againstCount))) *
+                  100
+                : 50,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching bet details:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load bet details from the blockchain.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
-  };
+
+    fetchBetDetails();
+  }, [betId, bettingService, toast]);
 
   // Handle placing bet
   const handlePlaceBet = async () => {
+    if (!betId) {
+      toast({
+        title: "Error",
+        description: "Invalid bet ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsPlacingBet(true);
 
-      // Check if user has enough balance
-      const amount = parseFloat(betAmount) || 0;
-      const gas = parseFloat(estimatedGasFee);
-      const total = amount + gas;
-      const currentBalance = getBalance();
-
-      if (total > currentBalance) {
-        throw new Error("Insufficient balance");
+      if (!walletClient) {
+        throw new Error("Wallet not connected");
       }
 
-      // Simulate blockchain transaction
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Call the joinBet function from the betting service
+      const receipt = await bettingService.joinBet(
+        parseInt(betId),
+        betSide === "yes", // true for "yes", false for "no"
+        betAmount // Pass the bet amount from the form
+      );
 
-      // Withdraw funds from wallet
-      const success = withdrawFunds(total);
-      if (!success) {
-        throw new Error("Failed to withdraw funds");
-      }
+      console.log("Bet placed successfully:", receipt);
 
       toast({
         title: "Bet Placed Successfully",
-        description: `You bet ${amount} ETH on ${betSide.toUpperCase()} for "${
+        description: `You bet ${betAmount} ETH on ${betSide.toUpperCase()} for "${
           bet.title
-        }"`,
+        }". Transaction hash: ${receipt.hash.substring(0, 10)}...`,
       });
-
-      // Reset form
-      setBetAmount("10");
     } catch (error: any) {
       console.error("Error placing bet:", error);
       toast({
@@ -249,7 +248,7 @@ export default function PlaceBetPage() {
                 <CardContent>
                   <div className="aspect-video relative rounded-lg overflow-hidden mb-6">
                     <Image
-                      src={bet.image || "/placeholder.svg"}
+                      src={bet.imageUrl}
                       alt={bet.title}
                       fill
                       className="object-cover"
@@ -281,7 +280,7 @@ export default function PlaceBetPage() {
                         Total Pool
                       </div>
                       <div className="text-lg font-medium font-mono">
-                        ${bet.totalPool.toLocaleString()}
+                        ${bet.poolAmount} ETH
                       </div>
                     </div>
                     <div className="bg-white/5 rounded-lg p-4">
@@ -289,7 +288,7 @@ export default function PlaceBetPage() {
                         Yes Pool
                       </div>
                       <div className="text-lg font-medium font-mono text-green-400">
-                        ${bet.yesPool.toLocaleString()}
+                        ${bet.joinAmount} ETH
                       </div>
                     </div>
                     <div className="bg-white/5 rounded-lg p-4">
@@ -297,7 +296,7 @@ export default function PlaceBetPage() {
                         No Pool
                       </div>
                       <div className="text-lg font-medium font-mono text-red-400">
-                        ${bet.noPool.toLocaleString()}
+                        ${bet.poolAmount} ETH
                       </div>
                     </div>
                   </div>
@@ -325,186 +324,76 @@ export default function PlaceBetPage() {
 
             {/* Betting form */}
             <div className="md:col-span-1">
-              <div className="space-y-6">
-                {/* Wallet Card */}
-                <Card className="border-white/10 bg-black/60 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Wallet className="h-5 w-5" />
-                      Wallet
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {isConnected ? (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-white/5 rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">
-                            Your Balance
-                          </div>
-                          <div className="text-2xl font-medium font-mono">
-                            {balance ? parseFloat(balance).toFixed(3) : "0.000"}{" "}
-                            ETH
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">Add Funds</div>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              value={depositAmount}
-                              onChange={(e) => setDepositAmount(e.target.value)}
-                              className="flex-1"
-                              min="0"
-                              step="0.01"
-                            />
-                            <Button
-                              onClick={handleDeposit}
-                              disabled={isDepositing}
-                              className="whitespace-nowrap"
-                            >
-                              {isDepositing && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              )}
-                              Deposit
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                          Connect your wallet to place bets and manage your
-                          funds.
-                        </p>
+              <Card className="border-white/10 bg-black/60 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>Place Your Bet</CardTitle>
+                  <CardDescription>
+                    Choose your prediction and bet amount
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Bet Side Selection */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Your Prediction
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
-                          onClick={handleConnectWallet}
-                          className="w-full"
+                          type="button"
+                          variant={betSide === "yes" ? "default" : "outline"}
+                          className={
+                            betSide === "yes"
+                              ? "bg-green-500 hover:bg-green-600"
+                              : "border-white/10"
+                          }
+                          onClick={() => setBetSide("yes")}
                         >
-                          Connect Wallet
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Yes
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={betSide === "no" ? "default" : "outline"}
+                          className={
+                            betSide === "no"
+                              ? "bg-red-500 hover:bg-red-600"
+                              : "border-white/10"
+                          }
+                          onClick={() => setBetSide("no")}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          No
                         </Button>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </div>
 
-                {/* Betting Card */}
-                <Card className="border-white/10 bg-black/60 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle>Place Your Bet</CardTitle>
-                    <CardDescription>
-                      Choose your prediction and bet amount
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      {/* Bet Side Selection */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          Your Prediction
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant={betSide === "yes" ? "default" : "outline"}
-                            className={
-                              betSide === "yes"
-                                ? "bg-green-500 hover:bg-green-600"
-                                : "border-white/10"
-                            }
-                            onClick={() => setBetSide("yes")}
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Yes
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={betSide === "no" ? "default" : "outline"}
-                            className={
-                              betSide === "no"
-                                ? "bg-red-500 hover:bg-red-600"
-                                : "border-white/10"
-                            }
-                            onClick={() => setBetSide("no")}
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            No
-                          </Button>
-                        </div>
+                    {/* Fixed Bet Amount */}
+                    <div className="p-4 bg-white/5 rounded-lg">
+                      <div className="text-sm text-muted-foreground mb-1">
+                        Bet Amount (ETH)
                       </div>
-
-                      {/* Bet Amount */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          Bet Amount (ETH)
-                        </label>
-                        <Input
-                          type="number"
-                          value={betAmount}
-                          onChange={(e) => setBetAmount(e.target.value)}
-                          min="0.001"
-                          step="0.001"
-                        />
-                      </div>
-
-                      {/* Potential Reward */}
-                      <div className="p-4 bg-white/5 rounded-lg">
-                        <div className="text-sm text-muted-foreground mb-1">
-                          Potential Reward
-                        </div>
-                        <div className="text-lg font-medium font-mono">
-                          {betSide === "yes"
-                            ? (
-                                (parseFloat(betAmount) || 0) *
-                                (bet.totalPool / bet.yesPool)
-                              ).toFixed(3)
-                            : (
-                                (parseFloat(betAmount) || 0) *
-                                (bet.totalPool / bet.noPool)
-                              ).toFixed(3)}{" "}
-                          ETH
-                        </div>
-                      </div>
-
-                      {/* Gas Fee */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Estimated Gas Fee
-                          </span>
-                          <span>{estimatedGasFee} ETH</span>
-                        </div>
-                        <Separator className="bg-white/10" />
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">Total Cost</span>
-                          <span className="font-medium">{totalCost} ETH</span>
-                        </div>
+                      <div className="text-lg font-medium font-mono">
+                        {betAmount} ETH
                       </div>
                     </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full"
-                      disabled={
-                        !isConnected ||
-                        isPlacingBet ||
-                        parseFloat(betAmount) <= 0 ||
-                        parseFloat(totalCost) > getBalance()
-                      }
-                      onClick={handlePlaceBet}
-                    >
-                      {isPlacingBet && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      {!isConnected
-                        ? "Connect Wallet to Bet"
-                        : parseFloat(totalCost) > getBalance()
-                        ? "Insufficient Balance"
-                        : `Place ${betSide.toUpperCase()} Bet`}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full"
+                    disabled={isPlacingBet || !walletClient}
+                    onClick={handlePlaceBet}
+                  >
+                    {isPlacingBet && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {!walletClient
+                      ? "Connect Wallet to Bet"
+                      : `Place ${betSide.toUpperCase()} Bet`}
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
           </div>
         </motion.div>
