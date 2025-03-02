@@ -25,8 +25,40 @@ export default function QuickSwapPage() {
 
   // Check authentication status
   useEffect(() => {
-    const savedAuth = localStorage.getItem("isAuthenticated");
-    setIsAuthenticated(savedAuth === "true");
+    const checkAuth = () => {
+      const savedAuth = localStorage.getItem("isAuthenticated");
+      const walletConnected =
+        window.ethereum && window.ethereum.selectedAddress;
+
+      // Only consider authenticated if both localStorage flag is set AND wallet is connected
+      setIsAuthenticated(savedAuth === "true" && !!walletConnected);
+
+      // Log authentication status for debugging
+      console.log("Authentication status:", {
+        savedAuth,
+        walletConnected,
+        isAuthenticated: savedAuth === "true" && !!walletConnected,
+      });
+    };
+
+    // Check initially
+    checkAuth();
+
+    // Set up event listeners for wallet connection changes
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", checkAuth);
+      window.ethereum.on("connect", checkAuth);
+      window.ethereum.on("disconnect", checkAuth);
+    }
+
+    // Clean up event listeners
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener("accountsChanged", checkAuth);
+        window.ethereum.removeListener("connect", checkAuth);
+        window.ethereum.removeListener("disconnect", checkAuth);
+      }
+    };
   }, []);
 
   // Fetch marketplace tokens
@@ -34,8 +66,8 @@ export default function QuickSwapPage() {
     const fetchMarketplaceTokens = async () => {
       try {
         setIsLoading(true);
-        // Get tokens that are open for sale (isOpen = true)
-        const tokens = await getTokens({ isOpen: true });
+        // Get tokens that are graduated (isOpen = false)
+        const tokens = await getTokens({ isOpen: false });
         setMarketplaceTokens(tokens);
       } catch (error) {
         console.error("Error fetching marketplace tokens:", error);

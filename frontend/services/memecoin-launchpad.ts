@@ -78,9 +78,12 @@ export async function swapEthForToken(
   try {
     const { signer, liquidityPool } = await loadFactoryContract();
     const ethAmountEthers = ethers.parseUnits(amount.toString(), 18);
+    console.log("ethAmountEthers", ethAmountEthers);
+    console.log("token.isOpen", token.isOpen);
     if (token.isOpen === true) {
       return { success: false };
     }
+    
 
     const transaction = await liquidityPool
       .connect(signer)
@@ -102,7 +105,7 @@ export async function swapTokenForEth(
   tokenAmount: bigint
 ): Promise<{ success: boolean }> {
   try {
-    const { signer, liquidityPool } = await loadFactoryContract();    
+    const { signer, liquidityPool } = await loadFactoryContract();
     const tokenAmountEthers = ethers.parseUnits(tokenAmount.toString(), 18);
     if (tokenSale.isOpen === true) {
       return { success: false };
@@ -373,4 +376,101 @@ export async function getEstimatedEthForTokens(
   );
   console.log("getEstimatedEthForTokens: ", getEstimatedEthForTokens);
   return eth;
+}
+
+/**
+ * Get the balance of a specific token for the current user
+ * @param tokenAddress The address of the token
+ * @returns The token balance as a BigInt
+ */
+export async function getTokenBalance(tokenAddress: string): Promise<bigint> {
+  try {
+    const { signer } = await loadFactoryContract();
+    const userAddress = await signer.getAddress();
+
+    // Create a minimal ERC20 interface with just the balanceOf function
+    const erc20Interface = new ethers.Interface([
+      "function balanceOf(address owner) view returns (uint256)",
+    ]);
+
+    // Create a contract instance
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      erc20Interface,
+      signer
+    );
+
+    // Call balanceOf to get the user's balance
+    const balance = await tokenContract.balanceOf(userAddress);
+    return balance;
+  } catch (error) {
+    console.error("Error getting token balance:", error);
+    return BigInt(0);
+  }
+}
+
+/**
+ * Get the ETH balance for the current user
+ * @returns The ETH balance as a BigInt
+ */
+export async function getEthBalance(): Promise<bigint> {
+  try {
+    const { provider, signer } = await loadFactoryContract();
+    const userAddress = await signer.getAddress();
+    const balance = await provider.getBalance(userAddress);
+    return balance;
+  } catch (error) {
+    console.error("Error getting ETH balance:", error);
+    return BigInt(0);
+  }
+}
+
+/**
+ * Get all tokens owned by the current user (purchased tokens)
+ * @returns Array of tokens with balance information
+ */
+export async function getPurchasedTokens(): Promise<Token[]> {
+  try {
+    // Get all tokens first
+    const allTokens = await getTokens();
+    const { signer } = await loadFactoryContract();
+    const userAddress = await signer.getAddress();
+
+    // Create a minimal ERC20 interface with just the balanceOf function
+    const erc20Interface = new ethers.Interface([
+      "function balanceOf(address owner) view returns (uint256)",
+    ]);
+
+    // Check each token's balance
+    const purchasedTokensPromises = allTokens.map(async (token) => {
+      // Create a contract instance
+      const tokenContract = new ethers.Contract(
+        token.token,
+        erc20Interface,
+        signer
+      );
+
+      // Call balanceOf to get the user's balance
+      const balance = await tokenContract.balanceOf(userAddress);
+
+      // If balance is greater than 0, user owns this token
+      if (balance > BigInt(0)) {
+        return {
+          ...token,
+          balance: balance,
+        };
+      }
+      return null;
+    });
+
+    // Wait for all promises to resolve and filter out null values
+    const purchasedTokens = (await Promise.all(purchasedTokensPromises)).filter(
+      (token): token is Token & { balance: bigint } => token !== null
+    );
+
+    return purchasedTokens;
+  } catch (error) {
+    console.error("Error getting purchased tokens:", error);
+    return [];
+  }
 }
