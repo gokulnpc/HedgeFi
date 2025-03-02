@@ -198,6 +198,10 @@ export default function LaunchPage() {
 
       // Create File object from blob
       const file = new File([blob], "ai-generated.png", { type: "image/png" });
+<<<<<<< HEAD
+=======
+      console.log("force update");
+>>>>>>> bc801301a3cc53cd038dbb50d6c85570ff721a51
 
       // console.log("file", file);
 
@@ -247,7 +251,7 @@ export default function LaunchPage() {
         description: data.description || "",
         price: "$0.00",
         priceChange: 0,
-        marketCap: "$0",
+        marketCap: "0",
         holders: "0",
         volume24h: "$0",
         launchDate: new Date().toISOString().split("T")[0],

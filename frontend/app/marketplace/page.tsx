@@ -226,6 +226,7 @@ const mockTokens: MemeToken[] = [
 // Update the MemeToken interface to include the new properties
 interface ExtendedMemeToken extends MemeToken {
   id?: string;
+  token?: string;
   volume24h?: string;
   holders?: string;
   launchDate?: string;
@@ -243,6 +244,14 @@ const TokenCard = ({
   const needsMarquee = token.name.length > 15;
   const [imageError, setImageError] = useState(false);
 
+  // Determine the token identifier to use in the URL
+  // Prefer token address if available, otherwise use symbol
+  const tokenIdentifier = token.token || token.symbol;
+
+  console.log(
+    `TokenCard ${index} - Name: ${token.name}, Symbol: ${token.symbol}, Token ID: ${tokenIdentifier}`
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -254,6 +263,8 @@ const TokenCard = ({
       <div className="relative overflow-hidden bg-black border rounded-2xl border-white/10">
         {/* Image Container */}
         <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
+          <div className="relative flex items-center justify-center overflow-hidden bg-gray-900 aspect-square">
+        <Link href={`/token/${tokenIdentifier}`} className="block">
           <div className="relative flex items-center justify-center overflow-hidden bg-gray-900 aspect-square">
             {/* Background placeholder */}
             <div
@@ -427,7 +438,7 @@ const TokenCard = ({
 
           {/* Buy Button */}
           <div className="mt-4">
-            <Link href={`/token/${token.symbol.toLowerCase()}`}>
+            <Link href={`/token/${tokenIdentifier}`}>
               <Button className="w-full" size="sm">
                 Buy {token.symbol}
               </Button>
@@ -460,9 +471,12 @@ export default function MarketplacePage() {
         // Get tokens that are open for sale (isOpen = true)
         const tokens = await getTokens({ isOpen: true });
 
+        console.log("Fetched tokens from blockchain:", tokens);
+
         // Convert the tokens to match the MemeToken interface
         const formattedTokens = tokens.map((token) => ({
           id: token.token,
+          token: token.token,
           name: token.name,
           symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
           description: token.description || "No description available",
@@ -479,6 +493,7 @@ export default function MarketplacePage() {
           creator: token.creator,
         }));
 
+        console.log("Formatted tokens:", formattedTokens);
         setRealTokens(formattedTokens);
       } catch (error) {
         console.error("Error fetching tokens:", error);
@@ -487,7 +502,6 @@ export default function MarketplacePage() {
         setIsLoading(false);
       }
     };
-
     fetchTokens();
   }, []);
 
@@ -497,6 +511,7 @@ export default function MarketplacePage() {
     const convertedMockTokens = mockTokens.map((token) => ({
       ...token,
       id: token.symbol,
+      token: token.symbol,
       volume24h: "$" + (Math.random() * 100000).toFixed(2),
       holders: (Math.random() * 1000).toFixed(0),
       launchDate: new Date().toISOString().split("T")[0],
@@ -513,17 +528,10 @@ export default function MarketplacePage() {
 
     // Prioritize real tokens, then store tokens, then mock tokens as fallback
     // Combine and remove duplicates based on symbol
-    const combined = [
-      ...realTokens,
-      ...validatedStoreTokens,
-      ...convertedMockTokens,
-    ];
+    const combined = [...realTokens, ...convertedMockTokens];
 
     // If we have real tokens, don't use mock tokens
-    const filteredTokens =
-      realTokens.length > 0
-        ? [...realTokens, ...validatedStoreTokens]
-        : combined;
+    const filteredTokens = realTokens.length > 0 ? [...realTokens] : combined;
 
     const uniqueTokens = Array.from(
       new Map(filteredTokens.map((token) => [token.symbol, token])).values()

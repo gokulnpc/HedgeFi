@@ -201,7 +201,9 @@ export const useWalletStore = create<WalletStore>()(
       },
 
       withdrawFunds: (amount: number) => {
-        const currentBalance = get().balance ? parseFloat(get().balance) : 0;
+        const currentBalance = get().balance
+          ? parseFloat(get().balance as string)
+          : 0;
         if (amount > currentBalance) {
           return false;
         }
