@@ -60,14 +60,21 @@ import {
   DollarSign,
   LinkIcon,
   Settings,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useTokenStore } from "../../store/tokenStore";
-import { getTokens, getPriceForTokens } from "@/services/memecoin-launchpad";
+import {
+  getTokens,
+  getPriceForTokens,
+  getPurchasedTokens,
+  getTokenBalance,
+} from "@/services/memecoin-launchpad";
 
 export default function TokensPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [tokenTypeTab, setTokenTypeTab] = useState("created"); // "created" or "purchased"
   const [showFilters, setShowFilters] = useState(false);
   const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{
@@ -75,16 +82,16 @@ export default function TokensPage() {
     direction: "asc" | "desc";
   }>({ key: "value", direction: "desc" });
   const [isLoading, setIsLoading] = useState(true);
-  const [userTokens, setUserTokens] = useState<any[]>([]);
+  const [createdTokens, setCreatedTokens] = useState<any[]>([]);
+  const [purchasedTokens, setPurchasedTokens] = useState<any[]>([]);
 
-  // Fetch user tokens from blockchain
+  // Fetch user created tokens from blockchain
   useEffect(() => {
-    const fetchUserTokens = async () => {
+    const fetchCreatedTokens = async () => {
       try {
         setIsLoading(true);
         const tokens = await getTokens({ isCreator: true });
-        console.log("token 123", tokens);
-        console.log("Force udpate");
+        console.log("Created tokens:", tokens);
 
         // Process tokens and get prices
         const formattedTokensPromises = tokens.map(async (token) => {
@@ -131,24 +138,102 @@ export default function TokensPage() {
             holders: (Math.random() * 1000).toFixed(0).toString(),
             launchDate: new Date().toISOString().split("T")[0],
             status: token.isOpen ? "active" : "locked",
+            type: "created",
           };
         });
 
         // Wait for all price fetching to complete
         const formattedTokens = await Promise.all(formattedTokensPromises);
-        setUserTokens(formattedTokens);
+        setCreatedTokens(formattedTokens);
       } catch (error) {
-        console.error("Error fetching user tokens:", error);
+        console.error("Error fetching created tokens:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserTokens();
+    fetchCreatedTokens();
   }, []);
 
-  // Combine store tokens with blockchain tokens
-  const tokens = [...userTokens];
+  // Fetch purchased tokens
+  useEffect(() => {
+    const fetchPurchasedTokens = async () => {
+      try {
+        setIsLoading(true);
+        const tokens = await getPurchasedTokens();
+        console.log("Purchased tokens:", tokens);
+
+        // Process tokens and get prices
+        const formattedTokensPromises = tokens.map(async (token) => {
+          // Get the actual price from the contract for 1 token
+          let tokenPrice = "0";
+          if (token.isOpen) {
+            try {
+              // Create a TokenSale object with all required properties
+              const tokenSaleData = {
+                token: token.token,
+                name: token.name,
+                creator: token.creator,
+                sold: token.sold,
+                raised: token.raised,
+                isOpen: token.isOpen,
+                metadataURI: token.image || "", // Use image URL as metadataURI
+              };
+
+              const price = await getPriceForTokens(tokenSaleData, BigInt(1));
+              tokenPrice = ethers.formatEther(price);
+              console.log(`Token price for ${token.name}:`, tokenPrice);
+            } catch (error) {
+              console.error(
+                `Error fetching price for token ${token.name}:`,
+                error
+              );
+              // Set price to 0 on error
+              tokenPrice = "0";
+            }
+          }
+
+          // Format the balance
+          const balance =
+            "balance" in token && token.balance !== undefined
+              ? ethers.formatEther(token.balance as bigint)
+              : "0";
+
+          return {
+            id: token.token,
+            name: token.name,
+            symbol: token.name.substring(0, 4).toUpperCase(),
+            description: token.description || "No description available",
+            imageUrl: token.image || "/placeholder.svg",
+            price: tokenPrice, // Use the actual price from the contract
+            marketCap: (Number(token.raised) / 1e18).toFixed(2),
+            priceChange: Math.random() * 20 - 10, // Random price change for now
+            fundingRaised: token.raised.toString(),
+            chain: "NEAR", // Default to ethereum, should be determined from the chain ID
+            volume24h: "$" + (Math.random() * 100000).toFixed(2),
+            holders: (Math.random() * 1000).toFixed(0).toString(),
+            launchDate: new Date().toISOString().split("T")[0],
+            status: token.isOpen ? "active" : "locked",
+            balance: balance,
+            type: "purchased",
+          };
+        });
+
+        // Wait for all price fetching to complete
+        const formattedTokens = await Promise.all(formattedTokensPromises);
+        setPurchasedTokens(formattedTokens);
+      } catch (error) {
+        console.error("Error fetching purchased tokens:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPurchasedTokens();
+  }, []);
+
+  // Get tokens based on the selected tab
+  const tokens = tokenTypeTab === "created" ? createdTokens : purchasedTokens;
 
   // Filter tokens based on search query and active tab
   const filteredTokens = tokens.filter((token) => {
@@ -236,7 +321,7 @@ export default function TokensPage() {
                   </span>
                 </h1>
                 <p className="text-muted-foreground">
-                  Manage and monitor all your created tokens
+                  Manage and monitor all your tokens
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -247,6 +332,32 @@ export default function TokensPage() {
                   </Button>
                 </Link>
               </div>
+            </div>
+
+            {/* Token Type Tabs */}
+            <div className="flex justify-center mb-6">
+              <Tabs
+                value={tokenTypeTab}
+                onValueChange={setTokenTypeTab}
+                className="w-full max-w-md"
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger
+                    value="created"
+                    className="flex items-center gap-2"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    Created Tokens
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="purchased"
+                    className="flex items-center gap-2"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    Purchased Tokens
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -408,7 +519,11 @@ export default function TokensPage() {
 
             <Card className="border-white/10 bg-black/60 backdrop-blur-xl">
               <CardHeader>
-                <CardTitle>Your Created Tokens</CardTitle>
+                <CardTitle>
+                  {tokenTypeTab === "created"
+                    ? "Your Created Tokens"
+                    : "Your Purchased Tokens"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -420,6 +535,11 @@ export default function TokensPage() {
                       <TableHead className="text-xs font-medium text-gray-400 uppercase">
                         Price
                       </TableHead>
+                      {tokenTypeTab === "purchased" && (
+                        <TableHead className="text-xs font-medium text-gray-400 uppercase">
+                          Balance
+                        </TableHead>
+                      )}
                       <TableHead className="hidden text-xs font-medium text-gray-400 uppercase md:table-cell">
                         Market Cap
                       </TableHead>
@@ -485,6 +605,18 @@ export default function TokensPage() {
                             {token.priceChange}%
                           </div>
                         </TableCell>
+                        {tokenTypeTab === "purchased" && (
+                          <TableCell>
+                            <div className="font-medium">{token.balance}</div>
+                            <div className="text-xs text-gray-500">
+                              $
+                              {(
+                                parseFloat(token.balance) *
+                                parseFloat(token.price)
+                              ).toFixed(2)}
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell className="hidden md:table-cell">
                           <div className="font-medium">{token.marketCap}</div>
                         </TableCell>

@@ -43,6 +43,10 @@ import {
   getPriceForTokens,
   getEstimatedTokensForEth,
   getEstimatedEthForTokens,
+  getTokenBalance,
+  getEthBalance,
+  swapCoinforToken,
+  swapTokenforCoin,
 } from "@/services/memecoin-launchpad";
 import { ethers } from "ethers";
 
@@ -116,12 +120,19 @@ const CoinSwap = ({
   handleTradeAction,
   marketplaceTokens = [],
 }: CoinSwapProps) => {
+  // State for token balances
+  const [tokenBalances, setTokenBalances] = useState<Record<string, string>>(
+    {}
+  );
+  const [ethBalance, setEthBalance] = useState<string>("0");
+  const [isLoadingBalances, setIsLoadingBalances] = useState<boolean>(false);
+
   // Convert marketplace tokens to the format needed for the UI
   const marketplaceTokensFormatted: UIToken[] = marketplaceTokens.map(
     (token) => ({
       symbol: token.name.substring(0, 4).toUpperCase(),
       name: token.name,
-      balance: 0, // User balance would need to be fetched separately
+      balance: 0, // Will be updated with real balance
       icon: "🪙", // Default icon for marketplace tokens
       change24h: "+0.0%", // This would need to be fetched from an API
       price: 0.01, // Default price, will be updated dynamically
@@ -139,9 +150,13 @@ const CoinSwap = ({
   const defaultToken = tokens.find((t) => t.symbol === symbol) || tokens[0];
 
   const [fromToken, setFromToken] = useState<UIToken>(defaultToken);
+  // Find a graduated token for the "to" token default
+  const graduatedToken = marketplaceTokensFormatted.find(
+    (token) => token.tokenData && !token.tokenData.isOpen
+  );
   const [toToken, setToToken] = useState<UIToken>(
-    marketplaceTokensFormatted[0] || defaultTokens[1]
-  ); // Default to first marketplace token or USDT
+    graduatedToken || defaultTokens[1]
+  ); // Default to first graduated marketplace token or USDT
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [swapType, setSwapType] = useState("instant");
@@ -167,6 +182,98 @@ const CoinSwap = ({
   const [gasCost, setGasCost] = useState("0.0 BNB");
   const [estimatedTime, setEstimatedTime] = useState("0 min");
 
+  // Fetch balances when component mounts or when tokens change
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (!isAuthenticated) {
+        setIsLoadingBalances(false);
+        return;
+      }
+
+      // Check if wallet is connected
+      if (!window.ethereum || !window.ethereum.selectedAddress) {
+        console.error("Wallet not connected");
+        setIsLoadingBalances(false);
+        return;
+      }
+
+      setIsLoadingBalances(true);
+      try {
+        // Fetch ETH balance
+        const ethBalanceWei = await getEthBalance();
+        const formattedEthBalance = ethers.formatEther(ethBalanceWei);
+        setEthBalance(formattedEthBalance);
+
+        // Update ETH token in the tokens array
+        const ethToken = tokens.find((t) => t.symbol === "ETH");
+        if (ethToken) {
+          ethToken.balance = parseFloat(formattedEthBalance);
+        }
+
+        // Fetch token balances for marketplace tokens
+        const balancePromises = marketplaceTokensFormatted.map(
+          async (token) => {
+            if (token.tokenData) {
+              try {
+                const balance = await getTokenBalance(token.tokenData.token);
+                const formattedBalance = ethers.formatEther(balance);
+                return {
+                  tokenAddress: token.tokenData.token,
+                  balance: formattedBalance,
+                };
+              } catch (error) {
+                console.error(
+                  `Error fetching balance for ${token.name}:`,
+                  error
+                );
+                return { tokenAddress: token.tokenData.token, balance: "0" };
+              }
+            }
+            return null;
+          }
+        );
+
+        const balanceResults = await Promise.all(balancePromises);
+
+        // Create a map of token address to balance
+        const balanceMap: Record<string, string> = {};
+        balanceResults.forEach((result) => {
+          if (result) {
+            balanceMap[result.tokenAddress] = result.balance;
+          }
+        });
+
+        setTokenBalances(balanceMap);
+
+        // Update token balances in the tokens array
+        marketplaceTokensFormatted.forEach((token) => {
+          if (token.tokenData && balanceMap[token.tokenData.token]) {
+            token.balance = parseFloat(balanceMap[token.tokenData.token]);
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching balances:", error);
+      } finally {
+        setIsLoadingBalances(false);
+      }
+    };
+
+    fetchBalances();
+  }, [isAuthenticated, marketplaceTokens]);
+
+  // Get the current balance of the selected token
+  const getSelectedTokenBalance = (token: UIToken): string => {
+    if (token.symbol === "ETH") {
+      return ethBalance;
+    }
+
+    if (token.tokenData) {
+      return tokenBalances[token.tokenData.token] || "0";
+    }
+
+    return "0";
+  };
+
   // Filter tokens based on search query
   const filteredFromTokens = tokens.filter(
     (token) =>
@@ -189,6 +296,14 @@ const CoinSwap = ({
             (token.symbol.toLowerCase().includes(toSearchQuery.toLowerCase()) ||
               token.name.toLowerCase().includes(toSearchQuery.toLowerCase()))
         );
+
+  // Helper function to check if a token is swappable (graduated)
+  const isTokenSwappable = (token: UIToken) => {
+    // ETH is always swappable
+    if (token.symbol === "ETH") return true;
+    // For other tokens, check if they are graduated (isOpen = false)
+    return token.tokenData ? !token.tokenData.isOpen : true;
+  };
 
   // Update swap direction when tokens change
   useEffect(() => {
@@ -304,7 +419,19 @@ const CoinSwap = ({
   };
 
   const handleMaxClick = () => {
-    handleFromAmountChange(fromToken.balance.toString());
+    // Use the real balance from our state
+    const balance = getSelectedTokenBalance(fromToken);
+
+    // If it's ETH, leave some for gas
+    if (fromToken.symbol === "ETH") {
+      // Leave 0.01 ETH for gas
+      const ethBalanceNum = parseFloat(balance);
+      const maxAmount = Math.max(0, ethBalanceNum - 0.01).toString();
+      handleFromAmountChange(maxAmount);
+    } else {
+      // For tokens, use the full balance
+      handleFromAmountChange(balance);
+    }
   };
 
   // Calculate estimated fees and slippage
@@ -330,16 +457,84 @@ const CoinSwap = ({
   const estimatedGasFee = 6.2; // In USD, this would come from an API in a real app
 
   // Handle the swap action
-  const handleSwap = () => {
-    // In a real app, this would call a blockchain transaction
-    // For demo purposes, we'll just show the success dialog after a short delay
-    if (handleTradeAction) {
-      handleTradeAction();
+  const handleSwap = async () => {
+    // Check if we're trying to swap with a non-graduated token
+    if (
+      (swapDirection === "ethToToken" && toToken.tokenData?.isOpen === true) ||
+      (swapDirection === "tokenToEth" && fromToken.tokenData?.isOpen === true)
+    ) {
+      // Show an error message or alert that only graduated tokens can be swapped
+      alert("Only graduated tokens (isOpen = false) can be swapped.");
+      return;
     }
 
-    // Simulate transaction processing
-    setTimeout(() => {
-      // Generate a mock transaction hash
+    // Check if the user has enough balance
+    const currentBalance = parseFloat(getSelectedTokenBalance(fromToken));
+    const amountToSwap = parseFloat(fromAmount);
+
+    if (isNaN(amountToSwap) || amountToSwap <= 0) {
+      alert("Please enter a valid amount to swap.");
+      return;
+    }
+
+    if (amountToSwap > currentBalance) {
+      alert(
+        `Insufficient balance. You have ${currentBalance} ${fromToken.symbol} but are trying to swap ${amountToSwap} ${fromToken.symbol}.`
+      );
+      return;
+    }
+
+    try {
+      // Convert amount to BigInt for the API calls
+      const amount = ethers.parseUnits(fromAmount, 18);
+      let result;
+
+      if (swapDirection === "ethToToken" && toToken.tokenData) {
+        // ETH to Token swap
+        const tokenSale = {
+          token: toToken.tokenData.token,
+          name: toToken.tokenData.name,
+          creator: toToken.tokenData.creator,
+          sold: toToken.tokenData.sold,
+          raised: toToken.tokenData.raised,
+          isOpen: toToken.tokenData.isOpen,
+          metadataURI: toToken.tokenData.image || "", // Use image URL as metadataURI
+        };
+
+        // Call the swap function
+        result = await swapCoinforToken(tokenSale, amount);
+      } else if (swapDirection === "tokenToEth" && fromToken.tokenData) {
+        // Token to ETH swap
+        const tokenSale = {
+          token: fromToken.tokenData.token,
+          name: fromToken.tokenData.name,
+          creator: fromToken.tokenData.creator,
+          sold: fromToken.tokenData.sold,
+          raised: fromToken.tokenData.raised,
+          isOpen: fromToken.tokenData.isOpen,
+          metadataURI: fromToken.tokenData.image || "", // Use image URL as metadataURI
+        };
+
+        // Call the swap function
+        result = await swapTokenforCoin(tokenSale, amount);
+      } else {
+        alert("Invalid swap configuration");
+        return;
+      }
+
+      // Check if the swap was successful
+      if (!result.success) {
+        alert("Swap failed. Please try again.");
+        return;
+      }
+
+      // In a real app, this would call a blockchain transaction
+      // For demo purposes, we'll just show the success dialog after a short delay
+      if (handleTradeAction) {
+        handleTradeAction();
+      }
+
+      // Generate a mock transaction hash (in a real app, this would come from the blockchain)
       const mockTxHash =
         "0xf79DcD66e8bC69dae488c3E0F35e069381" +
         Math.floor(Math.random() * 1000000)
@@ -347,7 +542,70 @@ const CoinSwap = ({
           .padStart(6, "0");
       setTransactionHash(mockTxHash);
       setShowSuccess(true);
-    }, 1500);
+
+      // Update balances after successful swap
+      updateBalancesAfterSwap();
+    } catch (error) {
+      console.error("Error during swap:", error);
+      alert("An error occurred during the swap. Please try again.");
+    }
+  };
+
+  // Update balances after a successful swap
+  const updateBalancesAfterSwap = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      // Fetch updated balances
+      const ethBalanceWei = await getEthBalance();
+      const formattedEthBalance = ethers.formatEther(ethBalanceWei);
+      setEthBalance(formattedEthBalance);
+
+      // Update ETH token in the tokens array
+      const ethToken = tokens.find((t) => t.symbol === "ETH");
+      if (ethToken) {
+        ethToken.balance = parseFloat(formattedEthBalance);
+      }
+
+      // If we swapped a token, update its balance
+      if (swapDirection === "tokenToEth" && fromToken.tokenData) {
+        const tokenBalance = await getTokenBalance(fromToken.tokenData.token);
+        const formattedBalance = ethers.formatEther(tokenBalance);
+
+        // Update the balance in our state
+        setTokenBalances((prev) => ({
+          ...prev,
+          [fromToken.tokenData!.token]: formattedBalance,
+        }));
+
+        // Update the token in the tokens array
+        const token = marketplaceTokensFormatted.find(
+          (t) => t.tokenData && t.tokenData.token === fromToken.tokenData!.token
+        );
+        if (token) {
+          token.balance = parseFloat(formattedBalance);
+        }
+      } else if (swapDirection === "ethToToken" && toToken.tokenData) {
+        const tokenBalance = await getTokenBalance(toToken.tokenData.token);
+        const formattedBalance = ethers.formatEther(tokenBalance);
+
+        // Update the balance in our state
+        setTokenBalances((prev) => ({
+          ...prev,
+          [toToken.tokenData!.token]: formattedBalance,
+        }));
+
+        // Update the token in the tokens array
+        const token = marketplaceTokensFormatted.find(
+          (t) => t.tokenData && t.tokenData.token === toToken.tokenData!.token
+        );
+        if (token) {
+          token.balance = parseFloat(formattedBalance);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating balances after swap:", error);
+    }
   };
 
   return (
@@ -376,6 +634,57 @@ const CoinSwap = ({
                   <Share2 className="h-5 w-5" />
                 </Button>
               </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-md p-3 mb-4 text-sm text-blue-400 flex items-start">
+                <Info className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+                <div>
+                  <strong>Note:</strong> Only graduated tokens (where isOpen =
+                  false) can be swapped. Tokens that are still in the sale phase
+                  cannot be traded.
+                </div>
+              </div>
+
+              {!isAuthenticated && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3 mb-4 text-sm text-yellow-400 flex items-start">
+                  <Info className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <strong>Wallet not connected:</strong> Please connect your
+                    wallet to view your balances and make trades.
+                  </div>
+                  <Button
+                    className="ml-2 bg-yellow-500 hover:bg-yellow-600 text-black"
+                    onClick={() => {
+                      if (window.ethereum) {
+                        window.ethereum
+                          .request({ method: "eth_requestAccounts" })
+                          .then(() => {
+                            // This will trigger the accountsChanged event which will update isAuthenticated
+                            console.log("Wallet connection requested");
+                          })
+                          .catch((error: any) => {
+                            console.error("Error connecting wallet:", error);
+                          });
+                      } else {
+                        alert(
+                          "Please install a Web3 wallet like MetaMask to use this feature"
+                        );
+                      }
+                    }}
+                  >
+                    Connect
+                  </Button>
+                </div>
+              )}
+
+              {isLoadingBalances && isAuthenticated && (
+                <div className="bg-green-500/10 border border-green-500/20 rounded-md p-3 mb-4 text-sm text-green-400 flex items-start">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-400 mr-2 mt-0.5"></div>
+                  <div>
+                    <strong>Loading balances:</strong> Please wait while we
+                    fetch your token balances...
+                  </div>
+                </div>
+              )}
 
               {/* Order Type Selector */}
               <div className="mb-6">
@@ -413,7 +722,16 @@ const CoinSwap = ({
                     <div className="text-sm text-gray-400">
                       Available:{" "}
                       <span className="text-gray-300">
-                        {fromToken.balance.toFixed(4)} {fromToken.symbol}
+                        {isLoadingBalances ? (
+                          <span className="animate-pulse">Loading...</span>
+                        ) : (
+                          <span>
+                            {parseFloat(
+                              getSelectedTokenBalance(fromToken)
+                            ).toFixed(4)}{" "}
+                            {fromToken.symbol}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -463,8 +781,16 @@ const CoinSwap = ({
                                 fromToken.symbol === token.symbol
                                   ? "bg-[#2A2B2E]"
                                   : ""
+                              } ${
+                                !isTokenSwappable(token) ? "opacity-50" : ""
                               }`}
                               onClick={() => {
+                                if (!isTokenSwappable(token)) {
+                                  alert(
+                                    "Only graduated tokens can be swapped."
+                                  );
+                                  return;
+                                }
                                 setFromToken(token);
                                 setIsFromOpen(false);
                                 if (fromAmount) {
@@ -477,6 +803,19 @@ const CoinSwap = ({
                                 <div className="flex flex-col">
                                   <span className="font-medium text-white">
                                     {token.symbol}
+                                    {token.tokenData && (
+                                      <span
+                                        className={`ml-2 text-xs px-1 py-0.5 rounded ${
+                                          isTokenSwappable(token)
+                                            ? "bg-green-500/20 text-green-400"
+                                            : "bg-yellow-500/20 text-yellow-400"
+                                        }`}
+                                      >
+                                        {isTokenSwappable(token)
+                                          ? "Graduated"
+                                          : "Not Graduated"}
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="text-xs text-gray-400">
                                     {token.name}
@@ -485,7 +824,20 @@ const CoinSwap = ({
                               </div>
                               <div className="flex flex-col items-end">
                                 <span className="text-sm text-gray-300">
-                                  {token.balance.toFixed(4)}
+                                  {isLoadingBalances ? (
+                                    <span className="animate-pulse">
+                                      Loading...
+                                    </span>
+                                  ) : token.symbol === "ETH" ? (
+                                    parseFloat(ethBalance).toFixed(4)
+                                  ) : token.tokenData ? (
+                                    parseFloat(
+                                      tokenBalances[token.tokenData.token] ||
+                                        "0"
+                                    ).toFixed(4)
+                                  ) : (
+                                    "0.0000"
+                                  )}
                                 </span>
                                 <span
                                   className={`text-xs ${
@@ -550,7 +902,16 @@ const CoinSwap = ({
                     <div className="text-sm text-gray-400">
                       Balance:{" "}
                       <span className="text-gray-300">
-                        {toToken.balance.toFixed(4)} {toToken.symbol}
+                        {isLoadingBalances ? (
+                          <span className="animate-pulse">Loading...</span>
+                        ) : (
+                          <span>
+                            {parseFloat(
+                              getSelectedTokenBalance(toToken)
+                            ).toFixed(4)}{" "}
+                            {toToken.symbol}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -598,8 +959,16 @@ const CoinSwap = ({
                                 toToken.symbol === token.symbol
                                   ? "bg-[#2A2B2E]"
                                   : ""
+                              } ${
+                                !isTokenSwappable(token) ? "opacity-50" : ""
                               }`}
                               onClick={() => {
+                                if (!isTokenSwappable(token)) {
+                                  alert(
+                                    "Only graduated tokens can be swapped."
+                                  );
+                                  return;
+                                }
                                 setToToken(token);
                                 setIsToOpen(false);
                                 if (fromAmount) {
@@ -612,6 +981,19 @@ const CoinSwap = ({
                                 <div className="flex flex-col">
                                   <span className="font-medium text-white">
                                     {token.symbol}
+                                    {token.tokenData && (
+                                      <span
+                                        className={`ml-2 text-xs px-1 py-0.5 rounded ${
+                                          isTokenSwappable(token)
+                                            ? "bg-green-500/20 text-green-400"
+                                            : "bg-yellow-500/20 text-yellow-400"
+                                        }`}
+                                      >
+                                        {isTokenSwappable(token)
+                                          ? "Graduated"
+                                          : "Not Graduated"}
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="text-xs text-gray-400">
                                     {token.name}
@@ -620,7 +1002,20 @@ const CoinSwap = ({
                               </div>
                               <div className="flex flex-col items-end">
                                 <span className="text-sm text-gray-300">
-                                  {token.balance.toFixed(4)}
+                                  {isLoadingBalances ? (
+                                    <span className="animate-pulse">
+                                      Loading...
+                                    </span>
+                                  ) : token.symbol === "ETH" ? (
+                                    parseFloat(ethBalance).toFixed(4)
+                                  ) : token.tokenData ? (
+                                    parseFloat(
+                                      tokenBalances[token.tokenData.token] ||
+                                        "0"
+                                    ).toFixed(4)
+                                  ) : (
+                                    "0.0000"
+                                  )}
                                 </span>
                                 <span
                                   className={`text-xs ${
@@ -799,9 +1194,51 @@ const CoinSwap = ({
                 {/* Swap Button */}
                 <Button
                   className="w-full h-14 text-lg font-medium mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
-                  onClick={handleSwap}
+                  onClick={
+                    !isAuthenticated
+                      ? () => {
+                          if (window.ethereum) {
+                            window.ethereum
+                              .request({ method: "eth_requestAccounts" })
+                              .then(() => {
+                                // This will trigger the accountsChanged event which will update isAuthenticated
+                                console.log("Wallet connection requested");
+                              })
+                              .catch((error: any) => {
+                                console.error(
+                                  "Error connecting wallet:",
+                                  error
+                                );
+                              });
+                          } else {
+                            alert(
+                              "Please install a Web3 wallet like MetaMask to use this feature"
+                            );
+                          }
+                        }
+                      : handleSwap
+                  }
+                  disabled={
+                    isAuthenticated &&
+                    (isLoadingBalances ||
+                      !fromAmount ||
+                      parseFloat(fromAmount) <= 0 ||
+                      parseFloat(fromAmount) >
+                        parseFloat(getSelectedTokenBalance(fromToken)))
+                  }
                 >
-                  {isAuthenticated ? "Swap now" : "Connect Wallet"}
+                  {!isAuthenticated
+                    ? "Connect Wallet"
+                    : isLoadingBalances
+                    ? "Loading Balances..."
+                    : !fromAmount || parseFloat(fromAmount) <= 0
+                    ? "Enter Amount"
+                    : parseFloat(fromAmount) >
+                      parseFloat(getSelectedTokenBalance(fromToken))
+                    ? "Insufficient Balance"
+                    : swapDirection === "ethToToken"
+                    ? `Swap ${fromToken.symbol} for ${toToken.symbol}`
+                    : `Swap ${fromToken.symbol} for ${toToken.symbol}`}
                 </Button>
               </div>
             </>

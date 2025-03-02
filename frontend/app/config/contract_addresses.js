@@ -17,10 +17,10 @@ export const config = {
   },
   1313161555: {
     factory: {
-      address: "0x2aA12f98795E7A65072950AfbA9d1E023D398241",
+      address: "0xE5b6F5e695BA6E4aeD92B68c4CC8Df1160D69A81",
     },
     nativeLiquidityPool: {
-      address: "0x81f4f47aa3bBd154171C877b4d70F6C9EeCAb216",
+      address: "0x9bE634797af98cB560DB23260b5f7C6e98AcCAcf",
     },
   },
 };
