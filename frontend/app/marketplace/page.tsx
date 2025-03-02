@@ -38,7 +38,10 @@ import { AppLayout } from "../components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTokenStore } from "../store/tokenStore";
-import { getTokens } from "@/services/memecoin-launchpad";
+import { getTokens, getPriceForTokens } from "@/services/memecoin-launchpad";
+import { ethers, id } from "ethers";
+import { error } from "console";
+import page from "../page";
 
 const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
 const DEFAULT_CHAIN_LOGO = "/chain-placeholder.svg";
@@ -83,7 +86,7 @@ const mockTokens: MemeToken[] = [
     description: "Much wisdom, very insight, wow!",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 0.41,
     fundingRaised: "0",
@@ -95,7 +98,7 @@ const mockTokens: MemeToken[] = [
     description: "The rarest Pepe in existence",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: -9.74,
     fundingRaised: "0",
@@ -107,7 +110,7 @@ const mockTokens: MemeToken[] = [
     description: "He bought? Dump it.",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: -3.48,
     fundingRaised: "0",
@@ -119,7 +122,7 @@ const mockTokens: MemeToken[] = [
     description: "The legendary Cheems brings good fortune",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/033/421/cover2.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 6.83,
     fundingRaised: "0",
@@ -131,7 +134,7 @@ const mockTokens: MemeToken[] = [
     description: "Yes, I buy memecoins. How could you tell?",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/026/152/gigachad.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 12.45,
     fundingRaised: "0",
@@ -143,7 +146,7 @@ const mockTokens: MemeToken[] = [
     description: "Only goes up! Financial genius!",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/029/959/Screen_Shot_2019-06-05_at_1.26.32_PM.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 8.21,
     fundingRaised: "0",
@@ -155,7 +158,7 @@ const mockTokens: MemeToken[] = [
     description: "Pop-tart cat traversing the galaxy",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/000/976/Nyan_Cat.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: -5.67,
     fundingRaised: "0",
@@ -167,7 +170,7 @@ const mockTokens: MemeToken[] = [
     description: "Everything is absolutely fine",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/018/012/this_is_fine.jpeg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 3.92,
     fundingRaised: "0",
@@ -179,7 +182,7 @@ const mockTokens: MemeToken[] = [
     description: "When you see another meme coin pumping",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/023/732/damngina.jpg",
-    price: "0.000045",
+    price: "0",
     marketCap: "8.1k",
     priceChange: 15.32,
     fundingRaised: "0",
@@ -191,7 +194,7 @@ const mockTokens: MemeToken[] = [
     description: "To the moon! Any minute now...",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/022/444/hiltonmoon.jpg",
-    price: "0.000028",
+    price: "0",
     marketCap: "5.2k",
     priceChange: -2.15,
     fundingRaised: "0",
@@ -203,7 +206,7 @@ const mockTokens: MemeToken[] = [
     description: "Big brain moves only",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/030/525/cover5.png",
-    price: "0.000052",
+    price: "0",
     marketCap: "9.4k",
     priceChange: 7.84,
     fundingRaised: "0",
@@ -215,7 +218,7 @@ const mockTokens: MemeToken[] = [
     description: "When your portfolio is down bad",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/026/489/crying.jpg",
-    price: "0.000019",
+    price: "0",
     marketCap: "3.5k",
     priceChange: -12.45,
     fundingRaised: "0",
@@ -262,8 +265,6 @@ const TokenCard = ({
     >
       <div className="relative overflow-hidden bg-black border rounded-2xl border-white/10">
         {/* Image Container */}
-        <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
-          <div className="relative flex items-center justify-center overflow-hidden bg-gray-900 aspect-square">
         <Link href={`/token/${tokenIdentifier}`} className="block">
           <div className="relative flex items-center justify-center overflow-hidden bg-gray-900 aspect-square">
             {/* Background placeholder */}
@@ -352,7 +353,7 @@ const TokenCard = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5">
-                  <Link href={`/token/${token.symbol.toLowerCase()}`}>
+                  <Link href={`/token/${tokenIdentifier}`}>
                     <h3 className="text-sm font-medium text-white transition-colors hover:text-blue-400">
                       {needsMarquee ? (
                         <div className="w-[120px] overflow-hidden">
@@ -473,26 +474,58 @@ export default function MarketplacePage() {
 
         console.log("Fetched tokens from blockchain:", tokens);
 
-        // Convert the tokens to match the MemeToken interface
-        const formattedTokens = tokens.map((token) => ({
-          id: token.token,
-          token: token.token,
-          name: token.name,
-          symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
-          description: token.description || "No description available",
-          imageUrl: token.image || DEFAULT_TOKEN_IMAGE,
-          price: "0.000033", // Default price, should be calculated from token data
-          marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k", // Convert wei to ETH and format
-          priceChange: Math.random() * 20 - 10, // Random price change for now
-          fundingRaised: token.raised.toString(),
-          chain: "ethereum", // Default to ethereum, should be determined from the chain ID
-          volume24h: "$" + (Math.random() * 100000).toFixed(2),
-          holders: (Math.random() * 1000).toFixed(0),
-          launchDate: new Date().toISOString().split("T")[0],
-          status: "active" as const,
-          creator: token.creator,
-        }));
+        // Process tokens and get prices
+        const formattedTokensPromises = tokens.map(async (token) => {
+          // Get the actual price from the contract for 1 token
+          let tokenPrice = "0";
+          if (token.isOpen) {
+            try {
+              // Create a TokenSale object with all required properties
+              const tokenSaleData = {
+                token: token.token,
+                name: token.name,
+                creator: token.creator,
+                sold: token.sold,
+                raised: token.raised,
+                isOpen: token.isOpen,
+                metadataURI: token.image || "", // Use image URL as metadataURI
+              };
 
+              const price = await getPriceForTokens(tokenSaleData, BigInt(1));
+              tokenPrice = ethers.formatEther(price);
+              console.log(`Token price for ${token.name}:`, tokenPrice);
+            } catch (error) {
+              console.error(
+                `Error fetching price for token ${token.name}:`,
+                error
+              );
+              // Set price to 0 on error
+              tokenPrice = "0";
+            }
+          }
+
+          return {
+            id: token.token,
+            token: token.token,
+            name: token.name,
+            symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
+            description: token.description || "No description available",
+            imageUrl: token.image || DEFAULT_TOKEN_IMAGE,
+            price: tokenPrice, // Use the actual price from the contract
+            marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k", // Convert wei to ETH and format
+            priceChange: Math.random() * 20 - 10, // Random price change for now
+            fundingRaised: token.raised.toString(),
+            chain: "ethereum", // Default to ethereum, should be determined from the chain ID
+            volume24h: "$" + (Math.random() * 100000).toFixed(2),
+            holders: (Math.random() * 1000).toFixed(0),
+            launchDate: new Date().toISOString().split("T")[0],
+            status: "active" as const,
+            creator: token.creator,
+          };
+        });
+
+        // Wait for all price fetching to complete
+        const formattedTokens = await Promise.all(formattedTokensPromises);
         console.log("Formatted tokens:", formattedTokens);
         setRealTokens(formattedTokens);
       } catch (error) {

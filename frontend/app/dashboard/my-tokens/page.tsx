@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { ethers } from "ethers";
 import { AppLayout } from "../../components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTokenStore } from "../../store/tokenStore";
-import { getTokens } from "@/services/memecoin-launchpad";
+import { getTokens, getPriceForTokens } from "@/services/memecoin-launchpad";
 
 export default function TokensPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,24 +85,57 @@ export default function TokensPage() {
         const tokens = await getTokens({ isCreator: true });
         console.log("token 123", tokens);
         console.log("Force udpate");
-        // Convert blockchain tokens to match the expected format
-        const formattedTokens = tokens.map((token) => ({
-          id: token.token,
-          name: token.name,
-          symbol: token.name.substring(0, 4).toUpperCase(),
-          description: token.description || "No description available",
-          imageUrl: token.image || "/placeholder.svg",
-          price: "0.000033", // Default price, should be calculated from token data
-          marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k",
-          priceChange: Math.random() * 20 - 10, // Random price change for now
-          fundingRaised: token.raised.toString(),
-          chain: "NEAR", // Default to ethereum, should be determined from the chain ID
-          volume24h: "$" + (Math.random() * 100000).toFixed(2),
-          holders: (Math.random() * 1000).toFixed(0).toString(),
-          launchDate: new Date().toISOString().split("T")[0],
-          status: token.isOpen ? "active" : "paused",
-        }));
 
+        // Process tokens and get prices
+        const formattedTokensPromises = tokens.map(async (token) => {
+          // Get the actual price from the contract for 1 token
+          let tokenPrice = "0";
+          if (token.isOpen) {
+            try {
+              // Create a TokenSale object with all required properties
+              const tokenSaleData = {
+                token: token.token,
+                name: token.name,
+                creator: token.creator,
+                sold: token.sold,
+                raised: token.raised,
+                isOpen: token.isOpen,
+                metadataURI: token.image || "", // Use image URL as metadataURI
+              };
+
+              const price = await getPriceForTokens(tokenSaleData, BigInt(1));
+              tokenPrice = ethers.formatEther(price);
+              console.log(`Token price for ${token.name}:`, tokenPrice);
+            } catch (error) {
+              console.error(
+                `Error fetching price for token ${token.name}:`,
+                error
+              );
+              // Set price to 0 on error
+              tokenPrice = "0";
+            }
+          }
+
+          return {
+            id: token.token,
+            name: token.name,
+            symbol: token.name.substring(0, 4).toUpperCase(),
+            description: token.description || "No description available",
+            imageUrl: token.image || "/placeholder.svg",
+            price: tokenPrice, // Use the actual price from the contract
+            marketCap: (Number(token.raised) / 1e18).toFixed(2),
+            priceChange: Math.random() * 20 - 10, // Random price change for now
+            fundingRaised: token.raised.toString(),
+            chain: "NEAR", // Default to ethereum, should be determined from the chain ID
+            volume24h: "$" + (Math.random() * 100000).toFixed(2),
+            holders: (Math.random() * 1000).toFixed(0).toString(),
+            launchDate: new Date().toISOString().split("T")[0],
+            status: token.isOpen ? "active" : "locked",
+          };
+        });
+
+        // Wait for all price fetching to complete
+        const formattedTokens = await Promise.all(formattedTokensPromises);
         setUserTokens(formattedTokens);
       } catch (error) {
         console.error("Error fetching user tokens:", error);
@@ -125,8 +159,8 @@ export default function TokensPage() {
     if (activeTab === "all") return matchesSearch;
     if (activeTab === "active")
       return matchesSearch && token.status === "active";
-    if (activeTab === "paused")
-      return matchesSearch && token.status === "paused";
+    if (activeTab === "locked")
+      return matchesSearch && token.status === "locked";
 
     return matchesSearch;
   });
@@ -339,7 +373,7 @@ export default function TokensPage() {
                 <TabsList>
                   <TabsTrigger value="all">All Tokens</TabsTrigger>
                   <TabsTrigger value="active">Active</TabsTrigger>
-                  <TabsTrigger value="paused">Paused</TabsTrigger>
+                  <TabsTrigger value="locked">Locked</TabsTrigger>
                 </TabsList>
               </Tabs>
 
@@ -450,57 +484,18 @@ export default function TokensPage() {
                             {token.priceChange >= 0 ? "+" : ""}
                             {token.priceChange}%
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            24h change
-                          </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="font-medium">{token.marketCap}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {token.status === "active"
-                              ? "Fully diluted"
-                              : "Locked"}
-                          </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="font-medium">{token.holders}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {token.id === "1" || token.id === "3" ? (
-                              <span className="text-green-500">
-                                +5.2% this week
-                              </span>
-                            ) : (
-                              <span className="text-red-500">
-                                -2.1% this week
-                              </span>
-                            )}
-                          </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <div className="font-medium">{token.volume24h}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {token.id === "1" || token.id === "4" ? (
-                              <span className="text-green-500">
-                                +12.3% from avg
-                              </span>
-                            ) : (
-                              <span className="text-red-500">
-                                -8.7% from avg
-                              </span>
-                            )}
-                          </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="font-medium">{token.launchDate}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">
-                            {token.id === "1"
-                              ? "3 months ago"
-                              : token.id === "2"
-                              ? "2 months ago"
-                              : token.id === "3"
-                              ? "1 month ago"
-                              : "2 months ago"}
-                          </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <Badge
@@ -509,13 +504,6 @@ export default function TokensPage() {
                           >
                             {token.chain}
                           </Badge>
-                          <div className="mt-1 text-xs text-gray-500">
-                            {token.chain === "ETH"
-                              ? "Ethereum"
-                              : token.chain === "BSC"
-                              ? "Binance"
-                              : "Solana"}
-                          </div>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <Badge
@@ -530,13 +518,8 @@ export default function TokensPage() {
                                 : "bg-gray-500/20 text-gray-400"
                             }
                           >
-                            {token.status === "active" ? "Active" : "Paused"}
+                            {token.status === "active" ? "Active" : "Locked"}
                           </Badge>
-                          <div className="mt-1 text-xs text-gray-500">
-                            {token.status === "active"
-                              ? "Trading enabled"
-                              : "Trading paused"}
-                          </div>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
