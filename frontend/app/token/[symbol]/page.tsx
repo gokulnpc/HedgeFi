@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { AppLayout } from "@/app/components/app-layout";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,11 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { ethers } from "ethers";
-import { getTokens, buyToken } from "@/services/memecoin-launchpad";
+import {
+  getTokens,
+  buyToken,
+  getPriceForTokens,
+} from "@/services/memecoin-launchpad";
 import { useToast } from "@/components/ui/use-toast";
 import {
   TrendingUp,
@@ -49,44 +53,128 @@ export default function TokenDetailPage() {
   const [buyAmount, setBuyAmount] = useState("1");
   const [isBuying, setIsBuying] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
+  const [notFoundError, setNotFoundError] = useState(false);
+  const [estimatedPrice, setEstimatedPrice] = useState<string>("0");
+  const [isPriceLoading, setIsPriceLoading] = useState(false);
+
+  // Check if amount exceeds maximum allowed
+  const isAmountExceedingLimit = useMemo(() => {
+    const amount = Number.parseFloat(buyAmount);
+    return !isNaN(amount) && amount > 10000;
+  }, [buyAmount]);
 
   // Fetch token details
   useEffect(() => {
     const fetchToken = async () => {
       try {
         setIsLoading(true);
-        // Get all tokens that are open for sale
-        const tokens = await getTokens({ isOpen: true });
+        setNotFoundError(false);
 
-        // Find the token with matching symbol
-        const foundToken = tokens.find(
-          (t) => t.name.substring(0, 4).toUpperCase() === symbol.toUpperCase()
+        // Get all tokens without filtering
+        const tokens = await getTokens();
+
+        console.log("Available tokens:", tokens);
+        console.log("Looking for token with identifier:", symbol);
+
+        // For debugging, log all token names and symbols
+        console.log("Available token names and symbols:");
+        tokens.forEach((t) => {
+          console.log(
+            `Name: ${t.name}, Symbol: ${t.name
+              .substring(0, 4)
+              .toUpperCase()}, Address: ${t.token}`
+          );
+        });
+
+        // Try to find the token using different matching strategies
+        let foundToken = null;
+
+        // 1. Try exact match on token address
+        foundToken = tokens.find(
+          (t) => t.token.toLowerCase() === symbol.toLowerCase()
         );
+        if (foundToken) {
+          console.log("Found token by address match");
+        }
+
+        // 2. If not found, try exact match on symbol (first 4 chars of name)
+        if (!foundToken) {
+          foundToken = tokens.find(
+            (t) => t.name.substring(0, 4).toUpperCase() === symbol.toUpperCase()
+          );
+          if (foundToken) {
+            console.log("Found token by symbol match");
+          }
+        }
+
+        // 3. If still not found, try partial match on name
+        if (!foundToken) {
+          foundToken = tokens.find((t) =>
+            t.name.toUpperCase().includes(symbol.toUpperCase())
+          );
+          if (foundToken) {
+            console.log("Found token by name partial match");
+          }
+        }
+
+        // 4. If still not found, try to use a mock token for testing
+        if (!foundToken && symbol.toLowerCase() === "sam") {
+          console.log("Using mock token for 'sam'");
+          // Create a mock token for testing
+          foundToken = {
+            token: "0x1234567890123456789012345678901234567890",
+            name: "Sample Token",
+            creator: "0xabcdef1234567890abcdef1234567890abcdef12",
+            sold: "1000000000000000000",
+            raised: "1000000000000000000",
+            isOpen: true,
+            image: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
+            description: "This is a sample token for testing",
+          };
+        }
+
+        console.log("Final found token:", foundToken);
 
         if (foundToken) {
           // Format token data for display
+          const imageUrl = foundToken.image || DEFAULT_TOKEN_IMAGE;
+          console.log("Token image URL:", imageUrl);
+
           setToken({
             id: foundToken.token,
             name: foundToken.name,
             symbol: foundToken.name.substring(0, 4).toUpperCase(),
             description: foundToken.description || "No description available",
-            imageUrl: foundToken.image || DEFAULT_TOKEN_IMAGE,
+            imageUrl: imageUrl,
             price: "0.000033", // Default price, should be calculated from token data
-            marketCap: (Number(foundToken.raised) / 1e18).toFixed(2) + "k",
-            priceChange: Math.random() * 20 - 10, // Random price change for now
+            marketCap: 0 + "k",
+            priceChange: 0, // Random price change for now
             fundingRaised: foundToken.raised.toString(),
             chain: "ethereum", // Default to ethereum, should be determined from the chain ID
-            volume24h: "$" + (Math.random() * 100000).toFixed(2),
-            holders: (Math.random() * 1000).toFixed(0),
+            volume24h: "0$",
+            holders: 0,
             launchDate: new Date().toISOString().split("T")[0],
             status: "active",
             creator: foundToken.creator,
             baseCost: "0.0001", // Base cost in ETH
             rawToken: foundToken, // Keep the original token data for buy function
           });
+        } else {
+          console.error("Token not found with identifier:", symbol);
+          console.log(
+            "Please check that you're using a valid token identifier (address, symbol, or name)"
+          );
+          setNotFoundError(true);
+          toast({
+            title: "Token Not Found",
+            description:
+              "The token you're looking for doesn't exist or is not available.",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         console.error("Error fetching token:", error);
+        setNotFoundError(true);
         toast({
           title: "Error",
           description: "Failed to load token details",
@@ -102,12 +190,62 @@ export default function TokenDetailPage() {
     }
   }, [symbol, toast]);
 
+  // Update estimated price when buyAmount changes
+  useEffect(() => {
+    const updateEstimatedPrice = async () => {
+      if (!token?.rawToken || !buyAmount || parseFloat(buyAmount) <= 0) {
+        setEstimatedPrice("0");
+        return;
+      }
+
+      try {
+        setIsPriceLoading(true);
+        // Convert amount to BigInt
+        const amount = BigInt(parseFloat(buyAmount));
+
+        // Get the estimated price
+        const price = await getPriceForTokens(token.rawToken, amount);
+
+        // Convert from wei to ETH and format
+        const priceInEth = ethers.formatEther(price);
+        setEstimatedPrice(priceInEth);
+      } catch (error) {
+        console.error("Error calculating price:", error);
+        // Fallback to simple calculation if the API call fails
+        setEstimatedPrice(
+          (parseFloat(buyAmount) * parseFloat(token?.baseCost || "0")).toFixed(
+            6
+          )
+        );
+      } finally {
+        setIsPriceLoading(false);
+      }
+    };
+
+    // Debounce the price update to avoid too many API calls
+    const debounceTimer = setTimeout(() => {
+      updateEstimatedPrice();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [buyAmount, token]);
+
   // Handle buy token
   const handleBuyToken = async () => {
     if (!token || !buyAmount) return;
 
     try {
       setIsBuying(true);
+
+      // Check if amount is valid
+      if (parseFloat(buyAmount) <= 0) {
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a valid amount greater than 0",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Convert amount to BigInt
       const amount = BigInt(parseFloat(buyAmount));
@@ -127,11 +265,11 @@ export default function TokenDetailPage() {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error buying token:", error);
       toast({
         title: "Error",
-        description: "An error occurred while buying tokens",
+        description: error.message || "An error occurred while buying tokens",
         variant: "destructive",
       });
     } finally {
@@ -204,7 +342,7 @@ export default function TokenDetailPage() {
     );
   }
 
-  if (!token) {
+  if (!token || notFoundError) {
     return (
       <AppLayout>
         <GridBackground />
@@ -273,12 +411,39 @@ export default function TokenDetailPage() {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* Token Image */}
-                    <div className="w-full md:w-48 h-48 relative rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-full md:w-48 h-48 relative rounded-lg overflow-hidden flex-shrink-0 bg-black/30">
+                      {/* Background placeholder */}
+                      <div
+                        className="w-full h-full absolute inset-0"
+                        style={{
+                          backgroundImage: `url(${DEFAULT_TOKEN_IMAGE})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          opacity: 0.5,
+                        }}
+                      />
+
+                      {/* Token Image with error handling */}
                       <Image
                         src={token?.imageUrl || DEFAULT_TOKEN_IMAGE}
                         alt={token?.name || "Token"}
                         fill
-                        className="object-cover"
+                        className="object-cover z-10"
+                        onError={(e) => {
+                          console.error(
+                            "Error loading token image:",
+                            token?.imageUrl
+                          );
+                          // Fallback to default image on error
+                          e.currentTarget.src = DEFAULT_TOKEN_IMAGE;
+                        }}
+                        unoptimized={
+                          !!(
+                            token?.imageUrl &&
+                            token?.imageUrl.startsWith("http")
+                          )
+                        }
+                        priority
                       />
                     </div>
 
@@ -471,8 +636,11 @@ export default function TokenDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
 
-              {/* Buy Card */}
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Buy Card - Moved to the top of the right column */}
               <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
                 <CardHeader>
                   <CardTitle>Buy {token?.symbol}</CardTitle>
@@ -491,22 +659,55 @@ export default function TokenDetailPage() {
                         value={buyAmount}
                         onChange={(e) => setBuyAmount(e.target.value)}
                         min="1"
-                        className="bg-black/30 border-white/10 h-12 rounded-lg text-lg"
+                        className={`bg-black/30 border-white/10 h-12 rounded-lg text-lg ${
+                          isAmountExceedingLimit ? "border-red-500" : ""
+                        }`}
                       />
+                      {isAmountExceedingLimit && (
+                        <p className="text-red-500 text-xs mt-1 flex items-center">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          Maximum purchase limit is 10,000 tokens
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-muted-foreground text-sm block mb-2">
                         Total Cost
                       </label>
-                      <div className="bg-black/30 border border-white/10 h-12 rounded-lg flex items-center px-4 text-lg font-mono">
-                        {(
-                          Number.parseFloat(buyAmount) *
-                          Number.parseFloat(token?.baseCost || "0")
-                        ).toFixed(6)}{" "}
-                        ETH
+                      <div
+                        className={`bg-black/30 border border-white/10 h-12 rounded-lg flex items-center px-4 text-lg font-mono ${
+                          isAmountExceedingLimit ? "border-red-500" : ""
+                        }`}
+                      >
+                        {isPriceLoading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Calculating...</span>
+                          </div>
+                        ) : (
+                          <>{estimatedPrice} ETH</>
+                        )}
                       </div>
                     </div>
                   </div>
+
+                  {isAmountExceedingLimit && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm text-red-500 font-medium">
+                            Purchase limit exceeded
+                          </p>
+                          <p className="text-xs text-red-400/80 mt-1">
+                            For security reasons, purchases are limited to
+                            10,000 tokens per transaction. Please reduce the
+                            amount to continue.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <Button
                     className="w-full h-12 text-base font-semibold bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white rounded-lg"
@@ -514,7 +715,8 @@ export default function TokenDetailPage() {
                     disabled={
                       isBuying ||
                       !buyAmount ||
-                      Number.parseFloat(buyAmount) <= 0
+                      Number.parseFloat(buyAmount) <= 0 ||
+                      isAmountExceedingLimit
                     }
                   >
                     {isBuying ? (
@@ -540,10 +742,7 @@ export default function TokenDetailPage() {
                   </div>
                 </CardFooter>
               </Card>
-            </div>
 
-            {/* Right Column */}
-            <div className="space-y-6">
               {/* Token Information Card */}
               <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
                 <CardHeader>

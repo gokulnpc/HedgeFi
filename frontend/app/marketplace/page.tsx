@@ -226,6 +226,7 @@ const mockTokens: MemeToken[] = [
 // Update the MemeToken interface to include the new properties
 interface ExtendedMemeToken extends MemeToken {
   id?: string;
+  token?: string;
   volume24h?: string;
   holders?: string;
   launchDate?: string;
@@ -243,6 +244,14 @@ const TokenCard = ({
   const needsMarquee = token.name.length > 15;
   const [imageError, setImageError] = useState(false);
 
+  // Determine the token identifier to use in the URL
+  // Prefer token address if available, otherwise use symbol
+  const tokenIdentifier = token.token || token.symbol;
+
+  console.log(
+    `TokenCard ${index} - Name: ${token.name}, Symbol: ${token.symbol}, Token ID: ${tokenIdentifier}`
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -253,7 +262,7 @@ const TokenCard = ({
     >
       <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10">
         {/* Image Container */}
-        <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
+        <Link href={`/token/${tokenIdentifier}`} className="block">
           <div className="aspect-square relative overflow-hidden flex justify-center items-center bg-gray-900">
             {/* Background placeholder */}
             <div
@@ -341,7 +350,7 @@ const TokenCard = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5">
-                  <Link href={`/token/${token.symbol.toLowerCase()}`}>
+                  <Link href={`/token/${tokenIdentifier}`}>
                     <h3 className="text-sm font-medium text-white hover:text-blue-400 transition-colors">
                       {needsMarquee ? (
                         <div className="w-[120px] overflow-hidden">
@@ -427,7 +436,7 @@ const TokenCard = ({
 
           {/* Buy Button */}
           <div className="mt-4">
-            <Link href={`/token/${token.symbol.toLowerCase()}`}>
+            <Link href={`/token/${tokenIdentifier}`}>
               <Button className="w-full" size="sm">
                 Buy {token.symbol}
               </Button>
@@ -460,9 +469,26 @@ export default function MarketplacePage() {
         // Get tokens that are open for sale (isOpen = true)
         const tokens = await getTokens({ isOpen: true });
 
+        console.log("Fetched tokens from blockchain:", tokens);
+
+        // Add a mock token for testing
+        const mockToken = {
+          token: "0x1234567890123456789012345678901234567890",
+          name: "Sample Token",
+          creator: "0xabcdef1234567890abcdef1234567890abcdef12",
+          sold: "1000000000000000000",
+          raised: "1000000000000000000",
+          isOpen: true,
+          image: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
+          description: "This is a sample token for testing",
+        };
+
+        tokens.push(mockToken);
+
         // Convert the tokens to match the MemeToken interface
         const formattedTokens = tokens.map((token) => ({
           id: token.token,
+          token: token.token,
           name: token.name,
           symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
           description: token.description || "No description available",
@@ -479,10 +505,33 @@ export default function MarketplacePage() {
           creator: token.creator,
         }));
 
+        console.log("Formatted tokens:", formattedTokens);
         setRealTokens(formattedTokens);
       } catch (error) {
         console.error("Error fetching tokens:", error);
         // If there's an error, we'll fall back to mock data
+
+        // Add a mock token for testing even in case of error
+        const mockFormattedToken = {
+          id: "0x1234567890123456789012345678901234567890",
+          token: "0x1234567890123456789012345678901234567890",
+          name: "Sample Token",
+          symbol: "SAM",
+          description: "This is a sample token for testing",
+          imageUrl: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
+          price: "0.000033",
+          marketCap: "1.0k",
+          priceChange: 5.0,
+          fundingRaised: "1000000000000000000",
+          chain: "ethereum",
+          volume24h: "$10000.00",
+          holders: "100",
+          launchDate: new Date().toISOString().split("T")[0],
+          status: "active" as const,
+          creator: "0xabcdef1234567890abcdef1234567890abcdef12",
+        };
+
+        setRealTokens([mockFormattedToken]);
       } finally {
         setIsLoading(false);
       }
@@ -497,6 +546,7 @@ export default function MarketplacePage() {
     const convertedMockTokens = mockTokens.map((token) => ({
       ...token,
       id: token.symbol,
+      token: token.symbol,
       volume24h: "$" + (Math.random() * 100000).toFixed(2),
       holders: (Math.random() * 1000).toFixed(0),
       launchDate: new Date().toISOString().split("T")[0],
