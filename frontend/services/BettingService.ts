@@ -239,8 +239,24 @@ export const useBettingService = () => {
 
   const getUserBetCredits = async (user: string) => {
     if (!walletClient) {
-      throw new Error("Wallet client not found");
+      console.warn("Wallet client not found, using read-only provider...");
+      try {
+        const provider = new ethers.JsonRpcProvider(
+          "https://testnet.aurora.dev"
+        );
+        const bettingContract = new ethers.Contract(
+          contractAddress,
+          BettingABI,
+          provider
+        );
+        const credits = await bettingContract.getUserBetCredits(user);
+        return credits;
+      } catch (error) {
+        console.error("Failed to use read-only provider:", error);
+        return BigInt(0); // Return 0 credits if we can't fetch
+      }
     }
+
     console.log("Getting bet credits for user:", user);
     const provider = new ethers.BrowserProvider(walletClient);
     const bettingContract = new ethers.Contract(

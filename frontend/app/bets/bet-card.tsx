@@ -11,7 +11,7 @@ import { TimeLeft } from "./time-left";
 import { cn } from "@/lib/utils";
 
 interface Bet {
-  id: string;
+  id: number;
   title: string;
   image: string;
   category: string;
