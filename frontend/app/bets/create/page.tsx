@@ -15,6 +15,7 @@ import {
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { useBettingService } from "@/services/BettingService";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -114,6 +115,8 @@ export default function CreateBet() {
   } | null>(null);
   const [twitterHandleChanged, setTwitterHandleChanged] = useState(false);
   const router = useRouter();
+  // Get the betting service at component level
+  const bettingService = useBettingService();
 
   // Check authentication status and Twitter connection
   useEffect(() => {
@@ -219,20 +222,36 @@ export default function CreateBet() {
       setIsSubmitting(true);
 
       // If no image was uploaded, generate one
+      let imageUrl = "/placeholder.svg"; // Default placeholder
       if (!previewImage) {
         const generatedImage = await generateCoverImage(values.title);
         setPreviewImage(generatedImage);
-        // In a real app, you would attach this image to the form data
+        imageUrl = generatedImage;
+      } else {
+        imageUrl = previewImage;
       }
 
       // Save the Twitter handle to user settings
       saveTwitterHandle(values.twitterHandle);
 
-      // Add API call here to create bet
-      console.log(values);
+      // Convert endDate string to timestamp
+      const endDateTimestamp = new Date(values.endDate).getTime() / 1000; // Convert to seconds
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // The contract expects amounts as numbers
+      const initialPoolAmount = parseFloat(values.initialPool);
+      const betAmount = 0; // Use 0 for base bet amount if not specified separately
+
+      // Use the betting service that was initialized at component level
+      await bettingService.createBet(
+        values.title, // title
+        values.description, // description
+        values.category, // category
+        values.twitterHandle, // twitterHandle
+        Math.floor(endDateTimestamp), // endDate as a Unix timestamp (in seconds)
+        betAmount, // amount (bet amount)
+        initialPoolAmount, // initialPoolAmount
+        imageUrl // imageURL
+      );
 
       toast({
         title: "Success!",
@@ -243,6 +262,7 @@ export default function CreateBet() {
       // Redirect to bets page
       router.push("/bets");
     } catch (error) {
+      console.error("Error creating bet:", error);
       toast({
         title: "Error",
         description: "Failed to create bet. Please try again.",
