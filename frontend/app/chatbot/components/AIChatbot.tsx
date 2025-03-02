@@ -24,13 +24,24 @@ import {
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
 import { useChatStore } from "../store";
 import { Message as BaseMessage } from "@/types/chat";
 import ThinkingMessage from "./ThinkingMessage";
 import { sendChatMessage } from "../service";
 import { ChatSwapInterface } from "./ChatSwapInterface/index";
 import type { Message, SwapMessageContent } from "@/types/chat";
+
+import type { Content, UUID } from "@elizaos/core";
+import { apiClient } from "@/app/lib/chat";
+
+import {
+  useMutation,
+  useQueryClient,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { toast, useToast } from "@/hooks/use-toast";
 
 // Map of icon components
 const icons = {
@@ -71,24 +82,143 @@ const quickActions: ActionType[] = [
   },
 ];
 
-export default function AIChatbot() {
-  const { messages, addMessage, isThinking, setIsThinking, clearMessages } =
-    useChatStore();
+interface IAttachment {
+  url: string;
+  contentType: string;
+  title: string;
+}
+type News = {
+  author: string;
+  content: string;
+  description: string;
+  publishedAt: string;
+  source: { id: null; name: string };
+  title: string;
+  url: string;
+  urlToImage: string;
+};
 
+type ExtraContentFields = {
+  user: string;
+  createdAt: number;
+  isLoading?: boolean;
+  data?: {
+    articles: News[];
+  };
+};
+
+type ContentWithUser = Content & ExtraContentFields;
+
+function AIChatbotContent() {
+  const agentId: UUID = "c3bd776c-4465-037f-9c7a-bf94dfba78d9";
+  const { toast } = useToast();
   const [input, setInput] = useState("");
   const [hasInteracted, setHasInteracted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(
+    null
+  );
   const [editingContent, setEditingContent] = useState("");
   const [isListening, setIsListening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFollowUpActions, setShowFollowUpActions] = useState(false);
   const searchParams = useSearchParams();
   const [showSwapInterface, setShowSwapInterface] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Type guard for SwapMessageContent
   const isSwapContent = (content: any): content is SwapMessageContent =>
     typeof content === "object" && content.type === "swap";
+
+  const queryClient = useQueryClient();
+
+  const messages =
+    queryClient.getQueryData<ContentWithUser[]>(["messages", agentId]) || [];
+
+  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input) return;
+
+    setHasInteracted(true);
+    setShowFollowUpActions(false);
+
+    const attachments: IAttachment[] | undefined = selectedFile
+      ? [
+          {
+            url: URL.createObjectURL(selectedFile),
+            contentType: selectedFile.type,
+            title: selectedFile.name,
+          },
+        ]
+      : undefined;
+
+    const userMessage = {
+      text: input,
+      user: "user",
+      createdAt: Date.now(),
+      attachments,
+    };
+
+    const thinkingMessage = {
+      text: "Cooking up my response...",
+      user: "Sage",
+      createdAt: Date.now() + 1,
+      isLoading: true,
+    };
+
+    queryClient.setQueryData(
+      ["messages", agentId],
+      (old: ContentWithUser[] = []) => [...old, userMessage, thinkingMessage]
+    );
+
+    sendMessageMutation.mutate({
+      message: input,
+      selectedFile: selectedFile ? selectedFile : null,
+    });
+
+    setSelectedFile(null);
+    setInput("");
+    formRef.current?.reset();
+  };
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  const sendMessageMutation = useMutation({
+    mutationKey: ["send_message", agentId],
+    mutationFn: ({
+      message,
+      selectedFile,
+    }: {
+      message: string;
+      selectedFile?: File | null;
+    }) => apiClient.sendMessage(agentId, message, selectedFile),
+    onSuccess: (newMessages: ContentWithUser[]) => {
+      queryClient.setQueryData(
+        ["messages", agentId],
+        (old: ContentWithUser[] = []) => [
+          ...old.filter((msg) => !msg.isLoading),
+          ...newMessages.map((msg) => ({
+            ...msg,
+            createdAt: Date.now(),
+          })),
+        ]
+      );
+      setShowFollowUpActions(true);
+    },
+    onError: (e) => {
+      toast({
+        variant: "destructive",
+        title: "Unable to send message",
+        description: e.message,
+      });
+    },
+  });
 
   // Check if we need to start a new chat
   useEffect(() => {
@@ -102,17 +232,17 @@ export default function AIChatbot() {
     {
       label: "Quick Swap",
       prompt: "Help me swap these tokens on the best DEX with lowest fees",
-      icon: <ArrowLeftRight className="h-4 w-4" />,
+      icon: <ArrowLeftRight className="w-4 h-4" />,
     },
     {
       label: "Latest News",
       prompt: "Show me the latest news about these tokens",
-      icon: <Newspaper className="h-4 w-4" />,
+      icon: <Newspaper className="w-4 h-4" />,
     },
     {
       label: "Price Alert",
       prompt: "Set a price alert for these tokens",
-      icon: <LineChart className="h-4 w-4" />,
+      icon: <LineChart className="w-4 h-4" />,
     },
   ];
 
@@ -139,89 +269,35 @@ export default function AIChatbot() {
     toToken: string
   ) => {
     // Add a success message to the chat
-    const successMessage: Message = {
-      id: Date.now().toString(),
-      content: `✅ Successfully swapped ${fromAmount} ${fromToken} to ${toAmount} ${toToken}`,
-      isBot: true,
-      timestamp: new Date().toISOString(),
+    const successMessage = {
+      text: `✅ Successfully swapped ${fromAmount} ${fromToken} to ${toAmount} ${toToken}`,
+      user: "assistant",
+      createdAt: Date.now(),
     };
-    addMessage(successMessage);
+
+    queryClient.setQueryData(
+      ["messages", agentId],
+      (old: ContentWithUser[] = []) => [...old, successMessage]
+    );
+
     setShowSwapInterface(false);
-  };
-
-  const handleSwapRequest = (content: string) => {
-    // Check if the message is a swap request
-    const isSwapRequest =
-      content.toLowerCase().includes("swap") ||
-      content.toLowerCase().includes("exchange") ||
-      content.toLowerCase().includes("trade");
-
-    if (isSwapRequest) {
-      // Extract token symbols if mentioned
-      const tokens = content.match(/[A-Z]{2,}/g) || [];
-      const swapMessage: Message = {
-        id: Date.now().toString(),
-        content: {
-          type: "swap",
-          fromToken: tokens[0],
-          toToken: tokens[1],
-        } as SwapMessageContent,
-        isBot: true,
-        timestamp: new Date().toISOString(),
-      };
-      addMessage(swapMessage);
-      return true;
-    }
-    return false;
-  };
-
-  const handleSend = async (content: string, file?: File) => {
-    if ((!content.trim() && !file) || isThinking) return;
-
-    setHasInteracted(true);
-
-    // Create user message
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      content,
-      isBot: false,
-      timestamp: new Date().toISOString(),
-    };
-
-    // Add file if present
-    if (file) {
-      userMessage.file = {
-        name: file.name,
-        url: URL.createObjectURL(file),
-        type: file.type,
-      };
-    }
-
-    addMessage(userMessage);
-    setInput("");
-
-    // Check if it's a swap request
-    if (handleSwapRequest(content)) {
-      return;
-    }
-
-    try {
-      await sendChatMessage(content, file);
-      setShowFollowUpActions(true);
-    } catch (error) {
-      console.error("Error sending message:", error);
-    }
   };
 
   const handleQuickAction = (prompt: string) => {
     setHasInteracted(true);
-    setShowFollowUpActions(false); // Reset follow-up actions when starting a new conversation
-    handleSend(prompt);
+    setShowFollowUpActions(false);
+    setInput(prompt);
+
+    const fakeEvent = {
+      preventDefault: () => {},
+    } as React.FormEvent<HTMLFormElement>;
+
+    handleSendMessage(fakeEvent);
   };
 
   // Function to start a new chat
   const startNewChat = () => {
-    clearMessages();
+    queryClient.setQueryData(["messages", agentId], []);
     setInput("");
     setHasInteracted(false);
     setShowFollowUpActions(false);
@@ -230,6 +306,10 @@ export default function AIChatbot() {
   const handleCopy = (content: string | SwapMessageContent) => {
     if (typeof content === "string") {
       navigator.clipboard.writeText(content);
+      toast({
+        title: "Copied to clipboard",
+        duration: 2000,
+      });
     }
   };
 
@@ -240,30 +320,26 @@ export default function AIChatbot() {
     }
   };
 
-  const handleEdit = (message: Message) => {
-    setEditingMessageId(message.id);
-    if (typeof message.content === "string") {
-      setEditingContent(message.content);
+  const handleEdit = (index: number, message: ContentWithUser) => {
+    setEditingMessageIndex(index);
+    if (typeof message.text === "string") {
+      setEditingContent(message.text);
     }
   };
 
   const handleSaveEdit = () => {
-    if (!editingMessageId) return;
-
-    // Find the message being edited
-    const messageToEdit = messages.find((msg) => msg.id === editingMessageId);
-    if (!messageToEdit || typeof messageToEdit.content !== "string") return;
+    if (editingMessageIndex === null) return;
 
     // Update the message in the store
-    const updatedMessages = messages.map((msg) =>
-      msg.id === editingMessageId ? { ...msg, content: editingContent } : msg
+    queryClient.setQueryData(
+      ["messages", agentId],
+      (old: ContentWithUser[] = []) =>
+        old.map((msg, idx) =>
+          idx === editingMessageIndex ? { ...msg, text: editingContent } : msg
+        )
     );
 
-    // Update the store with the new messages
-    clearMessages();
-    updatedMessages.forEach((msg) => addMessage(msg));
-
-    setEditingMessageId(null);
+    setEditingMessageIndex(null);
     setEditingContent("");
   };
 
@@ -300,48 +376,44 @@ export default function AIChatbot() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      handleSend(`Uploaded file: ${file.name}`, file);
+      setSelectedFile(file);
+      setInput(`Uploaded file: ${file.name}`);
     }
   };
 
-  const handleRegenerate = async (messageId: string) => {
-    setIsThinking(true);
-
-    // Find the message and its index
-    const messageIndex = messages.findIndex((m) => m.id === messageId);
-    if (messageIndex === -1) return;
-
+  const handleRegenerate = async (index: number) => {
     // Get the previous user message
     const previousUserMessage = messages
-      .slice(0, messageIndex)
+      .slice(0, index)
       .reverse()
-      .find((m) => !m.isBot);
-    if (!previousUserMessage || typeof previousUserMessage.content !== "string")
-      return;
+      .find((m) => m.user === "user");
 
-    // Remove the old bot message and all messages after it
-    const newMessages = messages.slice(0, messageIndex);
+    if (!previousUserMessage) return;
+
+    // Remove the bot message and all messages after it
+    const newMessages = messages.slice(0, index);
 
     // Update the store with the new messages
-    clearMessages();
-    newMessages.forEach((msg) => addMessage(msg));
+    queryClient.setQueryData(["messages", agentId], newMessages);
 
-    try {
-      // Regenerate response
-      const botMessage = await sendChatMessage(previousUserMessage.content);
-      addMessage(botMessage);
-    } catch (error) {
-      console.error("Error regenerating message:", error);
-      // Add error message
-      addMessage({
-        id: Date.now().toString(),
-        content: "Sorry, there was an error regenerating the response.",
-        isBot: true,
-        timestamp: new Date().toISOString(),
-      });
-    } finally {
-      setIsThinking(false);
-    }
+    // Add thinking message
+    const thinkingMessage = {
+      text: "Cooking up my response...",
+      user: "Sage",
+      createdAt: Date.now(),
+      isLoading: true,
+    };
+
+    queryClient.setQueryData(
+      ["messages", agentId],
+      (old: ContentWithUser[] = []) => [...old, thinkingMessage]
+    );
+
+    // Regenerate response
+    sendMessageMutation.mutate({
+      message: previousUserMessage.text,
+      selectedFile: null,
+    });
   };
 
   return (
@@ -353,9 +425,9 @@ export default function AIChatbot() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="text-center py-8 space-y-6 mt-4"
+            className="py-8 mt-4 space-y-6 text-center"
           >
-            <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-full bg-primary/10">
               <Brain className="w-8 h-8 text-primary" />
             </div>
             <h1 className="text-4xl font-bold">
@@ -364,7 +436,7 @@ export default function AIChatbot() {
                 Begins
               </span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="max-w-2xl mx-auto text-lg text-muted-foreground">
               I'm your HedgeFi AI assistant. I can help you analyze meme coins,
               track whale activity, and spot potential opportunities.
             </p>
@@ -379,7 +451,7 @@ export default function AIChatbot() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4"
+            className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-4"
           >
             {quickActions.map((action) => {
               const Icon = icons[action.iconName];
@@ -390,7 +462,7 @@ export default function AIChatbot() {
                   onClick={() => handleQuickAction(action.prompt)}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className="h-5 w-5 text-primary" />
+                    <Icon className="w-5 h-5 text-primary" />
                     <span className="text-sm font-medium">{action.label}</span>
                   </div>
                 </Card>
@@ -405,30 +477,27 @@ export default function AIChatbot() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className="flex-1 overflow-y-auto p-4 space-y-4 mt-2"
+        className="flex-1 p-4 mt-2 space-y-4 overflow-y-auto"
       >
-        {messages.map((message) => {
-          const messageContent = message.content;
-          const isStringContent = typeof messageContent === "string";
-          const isSwapContent = (content: any): content is SwapMessageContent =>
-            typeof content === "object" && content.type === "swap";
-
+        {messages.map((message, index) => {
+          const isBot = message.user === "Sage";
+          console.log("message,", message.text, message.user);
           return (
             <motion.div
-              key={message.id}
+              key={index}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className={cn(
                 "flex gap-3",
-                message.isBot ? "items-start" : "items-start flex-row-reverse"
+                isBot ? "items-start" : "items-start flex-row-reverse"
               )}
             >
               <Avatar>
-                {message.isBot ? (
+                {isBot ? (
                   <>
                     <AvatarImage src="/hedgefi-bot.png" />
                     <AvatarFallback>
-                      <Bot className="h-5 w-5" />
+                      <Bot className="w-5 h-5" />
                     </AvatarFallback>
                   </>
                 ) : (
@@ -441,10 +510,10 @@ export default function AIChatbot() {
               <div
                 className={cn(
                   "flex flex-col gap-2",
-                  message.isBot ? "items-start" : "items-end"
+                  isBot ? "items-start" : "items-end"
                 )}
               >
-                {editingMessageId === message.id ? (
+                {editingMessageIndex === index ? (
                   <div className="flex items-center gap-2">
                     <Input
                       value={editingContent}
@@ -458,7 +527,7 @@ export default function AIChatbot() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setEditingMessageId(null)}
+                      onClick={() => setEditingMessageIndex(null)}
                     >
                       Cancel
                     </Button>
@@ -467,13 +536,15 @@ export default function AIChatbot() {
                   <div
                     className={cn(
                       "rounded-lg px-4 py-2 max-w-[80%]",
-                      message.isBot
+                      isBot
                         ? "bg-secondary text-secondary-foreground"
                         : "bg-primary text-primary-foreground"
                     )}
                   >
-                    {message.isBot ? (
-                      isStringContent ? (
+                    {isBot ? (
+                      message.isLoading ? (
+                        <ThinkingMessage />
+                      ) : (
                         <ReactMarkdown
                           components={{
                             p: ({ node, ...props }) => (
@@ -490,31 +561,31 @@ export default function AIChatbot() {
                             ),
                             ol: ({ node, ...props }) => (
                               <ol
-                                className="list-decimal pl-6 my-2"
+                                className="pl-6 my-2 list-decimal"
                                 {...props}
                               />
                             ),
                             ul: ({ node, ...props }) => (
-                              <ul className="list-disc pl-6 my-2" {...props} />
+                              <ul className="pl-6 my-2 list-disc" {...props} />
                             ),
                             li: ({ node, ...props }) => (
                               <li className="my-1" {...props} />
                             ),
                             h1: ({ node, ...props }) => (
                               <h1
-                                className="text-xl font-bold my-3"
+                                className="my-3 text-xl font-bold"
                                 {...props}
                               />
                             ),
                             h2: ({ node, ...props }) => (
                               <h2
-                                className="text-lg font-bold my-2"
+                                className="my-2 text-lg font-bold"
                                 {...props}
                               />
                             ),
                             h3: ({ node, ...props }) => (
                               <h3
-                                className="text-base font-bold my-2"
+                                className="my-2 text-base font-bold"
                                 {...props}
                               />
                             ),
@@ -526,36 +597,30 @@ export default function AIChatbot() {
                             ),
                             blockquote: ({ node, ...props }) => (
                               <blockquote
-                                className="border-l-2 border-gray-500 pl-4 my-2 italic"
+                                className="pl-4 my-2 italic border-l-2 border-gray-500"
                                 {...props}
                               />
                             ),
                           }}
                         >
-                          {messageContent}
+                          {message.text}
                         </ReactMarkdown>
-                      ) : isSwapContent(messageContent) ? (
-                        <ChatSwapInterface
-                          defaultFromToken={messageContent.fromToken}
-                          defaultToToken={messageContent.toToken}
-                          onSwapComplete={handleSwapComplete}
-                        />
-                      ) : null
+                      )
                     ) : (
                       <div className="text-sm whitespace-pre-wrap">
-                        {isStringContent ? messageContent : ""}
+                        {message.text}
                       </div>
                     )}
-                    {message.file && (
-                      <div className="mt-2 p-2 bg-background/10 rounded flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="flex items-center gap-2 p-2 mt-2 rounded bg-background/10">
+                        <Plus className="w-4 h-4" />
                         <a
-                          href={message.file.url}
+                          href={message.attachments[0].url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm underline"
                         >
-                          {message.file.name}
+                          {message.attachments[0].title}
                         </a>
                       </div>
                     )}
@@ -563,33 +628,33 @@ export default function AIChatbot() {
                 )}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>
-                    {new Date(message.timestamp).toLocaleTimeString()}
+                    {new Date(message.createdAt).toLocaleTimeString()}
                   </span>
-                  {message.isBot ? (
+                  {isBot ? (
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleCopy(messageContent)}
+                        className="w-6 h-6"
+                        onClick={() => handleCopy(message.text)}
                       >
-                        <Copy className="h-3 w-3" />
+                        <Copy className="w-3 h-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleSpeak(messageContent)}
+                        className="w-6 h-6"
+                        onClick={() => handleSpeak(message.text)}
                       >
-                        <Volume2 className="h-3 w-3" />
+                        <Volume2 className="w-3 h-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleRegenerate(message.id)}
+                        className="w-6 h-6"
+                        onClick={() => handleRegenerate(index)}
                       >
-                        <RefreshCw className="h-3 w-3" />
+                        <RefreshCw className="w-3 h-3" />
                       </Button>
                     </div>
                   ) : (
@@ -597,18 +662,18 @@ export default function AIChatbot() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleCopy(messageContent)}
+                        className="w-6 h-6"
+                        onClick={() => handleCopy(message.text)}
                       >
-                        <Copy className="h-3 w-3" />
+                        <Copy className="w-3 h-3" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleEdit(message)}
+                        className="w-6 h-6"
+                        onClick={() => handleEdit(index, message)}
                       >
-                        <Pencil className="h-3 w-3" />
+                        <Pencil className="w-3 h-3" />
                       </Button>
                     </div>
                   )}
@@ -617,7 +682,6 @@ export default function AIChatbot() {
             </motion.div>
           );
         })}
-        {isThinking && <ThinkingMessage />}
         <div ref={messagesEndRef} />
       </motion.div>
 
@@ -637,7 +701,7 @@ export default function AIChatbot() {
                   variant="outline"
                   size="default"
                   className="bg-[#2A2B2E] border-[#353538] text-gray-300 hover:bg-[#353538] hover:text-white flex items-center justify-start text-sm gap-2 px-6 py-2 min-w-[160px]"
-                  onClick={() => handleSend(action.prompt)}
+                  onClick={() => handleQuickAction(action.prompt)}
                 >
                   <span className="text-primary">{action.icon}</span>
                   <span>{action.label}</span>
@@ -650,59 +714,79 @@ export default function AIChatbot() {
 
       {/* Input Area */}
       <div className="pt-4 mt-auto">
-        <div className="relative flex items-center">
-          <div className="absolute left-2 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-              accept="image/*,.pdf,.doc,.docx,.txt"
+        <form ref={formRef} onSubmit={handleSendMessage} className="relative">
+          <div className="relative flex items-center">
+            <div className="absolute flex items-center gap-2 left-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8"
+              >
+                <Globe className="w-4 h-4" />
+              </Button>
+            </div>
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  formRef.current?.requestSubmit();
+                }
+              }}
+              placeholder="Ask me anything..."
+              className="pl-20 pr-24"
             />
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Globe className="h-4 w-4" />
-            </Button>
+            <div className="absolute flex items-center gap-2 right-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn("h-8 w-8", isListening && "text-red-500")}
+                onClick={handleVoiceInput}
+              >
+                <Mic className="w-4 h-4" />
+              </Button>
+              <Button
+                type="submit"
+                size="icon"
+                className="w-8 h-8"
+                disabled={!input.trim()}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend(input);
-              }
-            }}
-            placeholder="Ask me anything..."
-            className="pl-20 pr-24"
-          />
-          <div className="absolute right-2 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("h-8 w-8", isListening && "text-red-500")}
-              onClick={handleVoiceInput}
-            >
-              <Mic className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handleSend(input)}
-              disabled={!input.trim() || isThinking}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        </form>
       </div>
     </div>
+  );
+}
+
+export default function AIChatbot() {
+  const [queryClient] = useState(() => new QueryClient());
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AIChatbotContent />
+    </QueryClientProvider>
   );
 }
