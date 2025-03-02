@@ -38,7 +38,10 @@ import { AppLayout } from "../components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTokenStore } from "../store/tokenStore";
-import { getTokens } from "@/services/memecoin-launchpad";
+import { getTokens, getPriceForTokens } from "@/services/memecoin-launchpad";
+import { ethers, id } from "ethers";
+import { error } from "console";
+import page from "../page";
 
 const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
 const DEFAULT_CHAIN_LOGO = "/chain-placeholder.svg";
@@ -83,7 +86,7 @@ const mockTokens: MemeToken[] = [
     description: "Much wisdom, very insight, wow!",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 0.41,
     fundingRaised: "0",
@@ -95,7 +98,7 @@ const mockTokens: MemeToken[] = [
     description: "The rarest Pepe in existence",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: -9.74,
     fundingRaised: "0",
@@ -107,7 +110,7 @@ const mockTokens: MemeToken[] = [
     description: "He bought? Dump it.",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: -3.48,
     fundingRaised: "0",
@@ -119,7 +122,7 @@ const mockTokens: MemeToken[] = [
     description: "The legendary Cheems brings good fortune",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/033/421/cover2.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 6.83,
     fundingRaised: "0",
@@ -131,7 +134,7 @@ const mockTokens: MemeToken[] = [
     description: "Yes, I buy memecoins. How could you tell?",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/026/152/gigachad.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 12.45,
     fundingRaised: "0",
@@ -143,7 +146,7 @@ const mockTokens: MemeToken[] = [
     description: "Only goes up! Financial genius!",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/029/959/Screen_Shot_2019-06-05_at_1.26.32_PM.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 8.21,
     fundingRaised: "0",
@@ -155,7 +158,7 @@ const mockTokens: MemeToken[] = [
     description: "Pop-tart cat traversing the galaxy",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/000/976/Nyan_Cat.jpg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: -5.67,
     fundingRaised: "0",
@@ -167,7 +170,7 @@ const mockTokens: MemeToken[] = [
     description: "Everything is absolutely fine",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/018/012/this_is_fine.jpeg",
-    price: "0.000033",
+    price: "0",
     marketCap: "7.3k",
     priceChange: 3.92,
     fundingRaised: "0",
@@ -179,7 +182,7 @@ const mockTokens: MemeToken[] = [
     description: "When you see another meme coin pumping",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/023/732/damngina.jpg",
-    price: "0.000045",
+    price: "0",
     marketCap: "8.1k",
     priceChange: 15.32,
     fundingRaised: "0",
@@ -191,7 +194,7 @@ const mockTokens: MemeToken[] = [
     description: "To the moon! Any minute now...",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/022/444/hiltonmoon.jpg",
-    price: "0.000028",
+    price: "0",
     marketCap: "5.2k",
     priceChange: -2.15,
     fundingRaised: "0",
@@ -203,7 +206,7 @@ const mockTokens: MemeToken[] = [
     description: "Big brain moves only",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/030/525/cover5.png",
-    price: "0.000052",
+    price: "0",
     marketCap: "9.4k",
     priceChange: 7.84,
     fundingRaised: "0",
@@ -215,7 +218,7 @@ const mockTokens: MemeToken[] = [
     description: "When your portfolio is down bad",
     imageUrl:
       "https://i.kym-cdn.com/entries/icons/original/000/026/489/crying.jpg",
-    price: "0.000019",
+    price: "0",
     marketCap: "3.5k",
     priceChange: -12.45,
     fundingRaised: "0",
@@ -258,15 +261,15 @@ const TokenCard = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       whileHover={{ y: -5 }}
-      className="group w-full"
+      className="w-full group"
     >
-      <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10">
+      <div className="relative overflow-hidden bg-black border rounded-2xl border-white/10">
         {/* Image Container */}
         <Link href={`/token/${tokenIdentifier}`} className="block">
-          <div className="aspect-square relative overflow-hidden flex justify-center items-center bg-gray-900">
+          <div className="relative flex items-center justify-center overflow-hidden bg-gray-900 aspect-square">
             {/* Background placeholder */}
             <div
-              className="w-full h-full absolute inset-0"
+              className="absolute inset-0 w-full h-full"
               style={{
                 backgroundImage: `url(${DEFAULT_TOKEN_IMAGE})`,
                 backgroundSize: "cover",
@@ -286,7 +289,7 @@ const TokenCard = ({
                 alt={token.name}
                 width={400}
                 height={400}
-                className="object-cover w-full h-full absolute inset-0"
+                className="absolute inset-0 object-cover w-full h-full"
                 priority={index < 4}
                 onError={() => setImageError(true)}
                 unoptimized={
@@ -297,7 +300,7 @@ const TokenCard = ({
             )}
 
             {/* Network Badge */}
-            <div className="absolute top-4 left-4 z-20">
+            <div className="absolute z-20 top-4 left-4">
               <div className="flex items-center gap-1.5 bg-black/90 rounded-full px-2.5 py-1 border border-white/10">
                 {chains.map(
                   (chain) =>
@@ -323,7 +326,7 @@ const TokenCard = ({
             </div>
 
             {/* Price Change Badge */}
-            <div className="absolute top-4 right-4 z-20">
+            <div className="absolute z-20 top-4 right-4">
               <div className="bg-black/90 rounded-lg px-2.5 py-1 border border-white/10">
                 <div className="flex items-center gap-1">
                   {token.priceChange > 0 ? (
@@ -351,7 +354,7 @@ const TokenCard = ({
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5">
                   <Link href={`/token/${tokenIdentifier}`}>
-                    <h3 className="text-sm font-medium text-white hover:text-blue-400 transition-colors">
+                    <h3 className="text-sm font-medium text-white transition-colors hover:text-blue-400">
                       {needsMarquee ? (
                         <div className="w-[120px] overflow-hidden">
                           <Marquee gradient={false} speed={20}>
@@ -387,7 +390,7 @@ const TokenCard = ({
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-medium font-mono text-white">
+              <div className="font-mono text-sm font-medium text-white">
                 ${token.price}
               </div>
               <div className="text-[10px] text-gray-500">
@@ -401,16 +404,16 @@ const TokenCard = ({
           </p>
 
           {/* Token Metrics */}
-          <div className="grid grid-cols-2 gap-4 mt-3 py-3 border-y border-white/10">
+          <div className="grid grid-cols-2 gap-4 py-3 mt-3 border-y border-white/10">
             <div>
               <div className="text-[10px] text-gray-500 mb-0.5">Volume 24h</div>
-              <div className="text-sm font-medium font-mono text-white">
+              <div className="font-mono text-sm font-medium text-white">
                 {token.volume24h}
               </div>
             </div>
             <div>
               <div className="text-[10px] text-gray-500 mb-0.5">Holders</div>
-              <div className="text-sm font-medium font-mono text-white">
+              <div className="font-mono text-sm font-medium text-white">
                 {token.holders}
               </div>
             </div>
@@ -469,74 +472,69 @@ export default function MarketplacePage() {
         // Get tokens that are open for sale (isOpen = true)
         const tokens = await getTokens({ isOpen: true });
 
-        console.log("Fetched tokens from blockchain:", tokens);
+        // console.log("Fetched tokens from blockchain:", tokens);
 
-        // Add a mock token for testing
-        const mockToken = {
-          token: "0x1234567890123456789012345678901234567890",
-          name: "Sample Token",
-          creator: "0xabcdef1234567890abcdef1234567890abcdef12",
-          sold: "1000000000000000000",
-          raised: "1000000000000000000",
-          isOpen: true,
-          image: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
-          description: "This is a sample token for testing",
-        };
+        // Process tokens and get prices
+        const formattedTokensPromises = tokens.map(async (token) => {
+          // Get the actual price from the contract for 1 token
+          let tokenPrice = "0";
+          if (token.isOpen) {
+            try {
+              // Create a TokenSale object with all required properties
+              const tokenSaleData = {
+                token: token.token,
+                name: token.name,
+                creator: token.creator,
+                sold: token.sold,
+                raised: token.raised,
+                isOpen: token.isOpen,
+                metadataURI: token.image || "", // Use image URL as metadataURI
+              };
 
-        tokens.push(mockToken);
+              const price = await getPriceForTokens(tokenSaleData, BigInt(1));
+              tokenPrice = ethers.formatEther(price);
+              console.log(`Token price for ${token.name}:`, tokenPrice);
+            } catch (error) {
+              console.error(
+                `Error fetching price for token ${token.name}:`,
+                error
+              );
+              // Set price to 0 on error
+              tokenPrice = "0";
+            }
+          }
 
-        // Convert the tokens to match the MemeToken interface
-        const formattedTokens = tokens.map((token) => ({
-          id: token.token,
-          token: token.token,
-          name: token.name,
-          symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
-          description: token.description || "No description available",
-          imageUrl: token.image || DEFAULT_TOKEN_IMAGE,
-          price: "0.000033", // Default price, should be calculated from token data
-          marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k", // Convert wei to ETH and format
-          priceChange: Math.random() * 20 - 10, // Random price change for now
-          fundingRaised: token.raised.toString(),
-          chain: "ethereum", // Default to ethereum, should be determined from the chain ID
-          volume24h: "$" + (Math.random() * 100000).toFixed(2),
-          holders: (Math.random() * 1000).toFixed(0),
-          launchDate: new Date().toISOString().split("T")[0],
-          status: "active" as const,
-          creator: token.creator,
-        }));
+          return {
+            id: token.token,
+            token: token.token,
+            name: token.name,
+            symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
+            description: token.description || "No description available",
+            imageUrl: token.image || DEFAULT_TOKEN_IMAGE,
+            price: tokenPrice, // Use the actual price from the contract
+            marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k", // Convert wei to ETH and format
+            priceChange: Math.random() * 20 - 10, // Random price change for now
+            fundingRaised: token.raised.toString(),
+            chain: "ethereum", // Default to ethereum, should be determined from the chain ID
+            volume24h: "$" + (Math.random() * 100000).toFixed(2),
+            holders: (Math.random() * 1000).toFixed(0),
+            launchDate: new Date().toISOString().split("T")[0],
+            status: "active" as const,
+            creator: token.creator,
+          };
+        });
 
+        // Wait for all price fetching to complete
+        const formattedTokens = await Promise.all(formattedTokensPromises);
         console.log("Formatted tokens:", formattedTokens);
         setRealTokens(formattedTokens);
       } catch (error) {
         console.error("Error fetching tokens:", error);
         // If there's an error, we'll fall back to mock data
-
-        // Add a mock token for testing even in case of error
-        const mockFormattedToken = {
-          id: "0x1234567890123456789012345678901234567890",
-          token: "0x1234567890123456789012345678901234567890",
-          name: "Sample Token",
-          symbol: "SAM",
-          description: "This is a sample token for testing",
-          imageUrl: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
-          price: "0.000033",
-          marketCap: "1.0k",
-          priceChange: 5.0,
-          fundingRaised: "1000000000000000000",
-          chain: "ethereum",
-          volume24h: "$10000.00",
-          holders: "100",
-          launchDate: new Date().toISOString().split("T")[0],
-          status: "active" as const,
-          creator: "0xabcdef1234567890abcdef1234567890abcdef12",
-        };
-
-        setRealTokens([mockFormattedToken]);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchTokens();
   }, []);
 
@@ -563,17 +561,10 @@ export default function MarketplacePage() {
 
     // Prioritize real tokens, then store tokens, then mock tokens as fallback
     // Combine and remove duplicates based on symbol
-    const combined = [
-      ...realTokens,
-      ...validatedStoreTokens,
-      ...convertedMockTokens,
-    ];
+    const combined = [...realTokens, ...convertedMockTokens];
 
     // If we have real tokens, don't use mock tokens
-    const filteredTokens =
-      realTokens.length > 0
-        ? [...realTokens, ...validatedStoreTokens]
-        : combined;
+    const filteredTokens = realTokens.length > 0 ? [...realTokens] : combined;
 
     const uniqueTokens = Array.from(
       new Map(filteredTokens.map((token) => [token.symbol, token])).values()
@@ -636,7 +627,7 @@ export default function MarketplacePage() {
           transition={{ duration: 0.5 }}
           className="container py-8"
         >
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex flex-col items-start justify-between gap-4 mb-8 md:flex-row md:items-center">
             <div>
               <h1 className="text-4xl font-bold">
                 Meme Token{" "}
@@ -644,7 +635,7 @@ export default function MarketplacePage() {
                   Marketplace
                 </span>
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="mt-2 text-muted-foreground">
                 Discover and invest in the latest meme tokens
               </p>
             </div>
@@ -660,15 +651,15 @@ export default function MarketplacePage() {
                 />
               </div>
               <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
+                <Filter className="w-4 h-4" />
               </Button>
               <Button variant="outline" size="icon">
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="flex flex-col gap-4 mb-8 sm:flex-row">
             <MarketFilters
               chains={chains}
               filterOptions={filterOptions}
@@ -679,7 +670,7 @@ export default function MarketplacePage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {isLoading ? (
               // Show loading state
               Array(8)
@@ -687,14 +678,14 @@ export default function MarketplacePage() {
                 .map((_, index) => (
                   <div
                     key={index}
-                    className="bg-black/60 rounded-2xl overflow-hidden border border-white/10 animate-pulse"
+                    className="overflow-hidden border bg-black/60 rounded-2xl border-white/10 animate-pulse"
                   >
-                    <div className="aspect-square bg-gray-800"></div>
+                    <div className="bg-gray-800 aspect-square"></div>
                     <div className="p-4 space-y-3">
-                      <div className="h-5 bg-gray-800 rounded w-2/3"></div>
-                      <div className="h-4 bg-gray-800 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-800 rounded w-full"></div>
-                      <div className="h-10 bg-gray-800 rounded w-full"></div>
+                      <div className="w-2/3 h-5 bg-gray-800 rounded"></div>
+                      <div className="w-1/2 h-4 bg-gray-800 rounded"></div>
+                      <div className="w-full h-4 bg-gray-800 rounded"></div>
+                      <div className="w-full h-10 bg-gray-800 rounded"></div>
                     </div>
                   </div>
                 ))
@@ -703,8 +694,8 @@ export default function MarketplacePage() {
                 <TokenCard key={token.symbol} token={token} index={index} />
               ))
             ) : (
-              <div className="col-span-full text-center py-12">
-                <h3 className="text-xl font-medium mb-2">No tokens found</h3>
+              <div className="py-12 text-center col-span-full">
+                <h3 className="mb-2 text-xl font-medium">No tokens found</h3>
                 <p className="text-muted-foreground">
                   Try adjusting your search or filters
                 </p>

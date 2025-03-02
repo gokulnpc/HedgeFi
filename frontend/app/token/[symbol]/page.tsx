@@ -40,6 +40,7 @@ import {
   Star,
 } from "lucide-react";
 import GridBackground from "@/app/components/GridBackground";
+import { title } from "process";
 
 const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
 
@@ -56,6 +57,7 @@ export default function TokenDetailPage() {
   const [notFoundError, setNotFoundError] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<string>("0");
   const [isPriceLoading, setIsPriceLoading] = useState(false);
+  const [isTokenClosed, setIsTokenClosed] = useState(false);
 
   // Check if amount exceeds maximum allowed
   const isAmountExceedingLimit = useMemo(() => {
@@ -140,24 +142,58 @@ export default function TokenDetailPage() {
           const imageUrl = foundToken.image || DEFAULT_TOKEN_IMAGE;
           console.log("Token image URL:", imageUrl);
 
+          // Check if token is closed
+          const isOpen = foundToken.isOpen;
+          setIsTokenClosed(!isOpen);
+
+          // Get the actual price from the contract for 1 token
+          let tokenPrice = "0";
+          if (isOpen) {
+            try {
+              // Get price for 1 token
+              // We need to ensure the token has all the required properties of TokenSale
+              const tokenSaleData = {
+                token: foundToken.token,
+                name: foundToken.name,
+                creator: foundToken.creator,
+                sold: foundToken.sold,
+                raised: foundToken.raised,
+                isOpen: foundToken.isOpen,
+                metadataURI: foundToken.image || "", // Use image URL as metadataURI
+              };
+
+              const price = await getPriceForTokens(tokenSaleData, BigInt(1));
+              tokenPrice = ethers.formatEther(price);
+              console.log("Token price from contract:", tokenPrice);
+            } catch (error) {
+              console.error("Error fetching token price:", error);
+              // Set price to 0 instead of using a hardcoded fallback
+              tokenPrice = "0";
+            }
+          } else {
+            // If token is locked, price is 0
+            tokenPrice = "0";
+          }
+
           setToken({
             id: foundToken.token,
             name: foundToken.name,
             symbol: foundToken.name.substring(0, 4).toUpperCase(),
             description: foundToken.description || "No description available",
             imageUrl: imageUrl,
-            price: "0.000033", // Default price, should be calculated from token data
-            marketCap: 0 + "k",
-            priceChange: 0, // Random price change for now
+            price: tokenPrice, // Set the actual price from the contract
+            marketCap: (Number(foundToken.raised) / 1e18).toFixed(2) + " ETH",
+            priceChange: Math.random() * 20 - 10, // Random price change for now
             fundingRaised: foundToken.raised.toString(),
             chain: "ethereum", // Default to ethereum, should be determined from the chain ID
             volume24h: "0$",
             holders: 0,
             launchDate: new Date().toISOString().split("T")[0],
-            status: "active",
+            status: isOpen ? "active" : "locked",
             creator: foundToken.creator,
-            baseCost: "0.0001", // Base cost in ETH
+            baseCost: tokenPrice, // Use the actual price from the contract
             rawToken: foundToken, // Keep the original token data for buy function
+            isOpen: isOpen, // Add isOpen property from the token data
           });
         } else {
           console.error("Token not found with identifier:", symbol);
@@ -203,20 +239,27 @@ export default function TokenDetailPage() {
         // Convert amount to BigInt
         const amount = BigInt(parseFloat(buyAmount));
 
+        // Create a TokenSale object from the token data
+        const tokenSaleData = {
+          token: token.rawToken.token,
+          name: token.rawToken.name,
+          creator: token.rawToken.creator,
+          sold: token.rawToken.sold,
+          raised: token.rawToken.raised,
+          isOpen: token.rawToken.isOpen,
+          metadataURI: token.rawToken.image || "", // Use image URL as metadataURI
+        };
+
         // Get the estimated price
-        const price = await getPriceForTokens(token.rawToken, amount);
+        const price = await getPriceForTokens(tokenSaleData, amount);
 
         // Convert from wei to ETH and format
         const priceInEth = ethers.formatEther(price);
         setEstimatedPrice(priceInEth);
       } catch (error) {
         console.error("Error calculating price:", error);
-        // Fallback to simple calculation if the API call fails
-        setEstimatedPrice(
-          (parseFloat(buyAmount) * parseFloat(token?.baseCost || "0")).toFixed(
-            6
-          )
-        );
+        // Set estimated price to 0 instead of using a fallback calculation
+        setEstimatedPrice("0");
       } finally {
         setIsPriceLoading(false);
       }
@@ -235,6 +278,17 @@ export default function TokenDetailPage() {
     if (!token || !buyAmount) return;
 
     try {
+      // Check if token is closed
+      if (isTokenClosed) {
+        toast({
+          title: "Token Closed",
+          description:
+            "This token has graduated and is no longer available for purchase.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsBuying(true);
 
       // Check if amount is valid
@@ -250,14 +304,37 @@ export default function TokenDetailPage() {
       // Convert amount to BigInt
       const amount = BigInt(parseFloat(buyAmount));
 
+      // Create a TokenSale object from the token data
+      const tokenSaleData = {
+        token: token.rawToken.token,
+        name: token.rawToken.name,
+        creator: token.rawToken.creator,
+        sold: token.rawToken.sold,
+        raised: token.rawToken.raised,
+        isOpen: token.rawToken.isOpen,
+        metadataURI: token.rawToken.image || "", // Use image URL as metadataURI
+      };
+
       // Call the buyToken function
-      const result = await buyToken(token.rawToken, amount);
+      const result = await buyToken(tokenSaleData, amount);
 
       if (result.success) {
         toast({
           title: "Success",
           description: `Successfully purchased ${buyAmount} ${token.symbol} tokens!`,
         });
+
+        // Wait for transaction confirmation (typically 1-2 blocks)
+        toast({
+          title: "Refreshing Data",
+          description: "Updating token information...",
+        });
+
+        // Add a small delay to allow the blockchain to update
+        setTimeout(() => {
+          // Reload the page to reflect updated data
+          window.location.reload();
+        }, 3000); // 3 second delay
       } else {
         toast({
           title: "Transaction Failed",
@@ -466,7 +543,7 @@ export default function TokenDetailPage() {
                             Price
                           </div>
                           <div className="text-xl font-semibold">
-                            ${token?.price}
+                            {token?.price === "0" ? "0" : `$${token?.price}`}
                           </div>
                           <div
                             className={`text-sm ${
@@ -490,18 +567,18 @@ export default function TokenDetailPage() {
                             Market Cap
                           </div>
                           <div className="text-xl font-semibold">
-                            ${token?.marketCap}
+                            {token?.marketCap}
                           </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-lg p-4">
+                        {/* <div className="bg-black/20 rounded-lg p-4">
                           <div className="text-muted-foreground text-sm mb-1">
                             Volume 24h
                           </div>
                           <div className="text-xl font-semibold">
                             {token?.volume24h}
                           </div>
-                        </div>
+                        </div> */}
 
                         <div className="bg-black/20 rounded-lg p-4">
                           <div className="text-muted-foreground text-sm mb-1">
@@ -649,6 +726,25 @@ export default function TokenDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {isTokenClosed && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm text-red-500 font-medium">
+                            ❌ This token has graduated! No further purchases
+                            allowed.
+                          </p>
+                          <p className="text-xs text-red-400/80 mt-1">
+                            This token is no longer available for purchase. You
+                            can still view its details and track its
+                            performance.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
                       <label className="text-muted-foreground text-sm block mb-2">
@@ -716,13 +812,19 @@ export default function TokenDetailPage() {
                       isBuying ||
                       !buyAmount ||
                       Number.parseFloat(buyAmount) <= 0 ||
-                      isAmountExceedingLimit
+                      isAmountExceedingLimit ||
+                      isTokenClosed
                     }
                   >
                     {isBuying ? (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span>Processing...</span>
+                      </div>
+                    ) : isTokenClosed ? (
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5" />
+                        <span>Token Closed</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -736,8 +838,9 @@ export default function TokenDetailPage() {
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
                     <span>
-                      Base cost: {token?.baseCost} ETH per token. Gas fees may
-                      apply.
+                      {isTokenClosed
+                        ? "This token is no longer available for purchase."
+                        : `Base cost: ${token?.baseCost} ETH per token. Gas fees may apply.`}
                     </span>
                   </div>
                 </CardFooter>
@@ -790,8 +893,14 @@ export default function TokenDetailPage() {
 
                     <div className="flex justify-between py-3 border-b border-white/10">
                       <span className="text-muted-foreground">Status</span>
-                      <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                        Active
+                      <Badge
+                        className={`${
+                          isTokenClosed
+                            ? "bg-red-500/10 text-red-500 border-red-500/20"
+                            : "bg-green-500/10 text-green-500 border-green-500/20"
+                        }`}
+                      >
+                        {isTokenClosed ? "Closed" : "Active"}
                       </Badge>
                     </div>
 

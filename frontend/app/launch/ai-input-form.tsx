@@ -1,41 +1,45 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Bot, RefreshCcw, Wand2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Card } from "@/components/ui/card"
-import type { InputMethod } from "./input-method-selector"
+import { useState } from "react";
+import { Bot, RefreshCcw, Wand2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import type { InputMethod } from "./input-method-selector";
 
 interface AIInputFormProps {
-  inputMethod: InputMethod
-  onGenerate: (input: string) => Promise<void>
-  isGenerating: boolean
+  inputMethod: InputMethod;
+  onGenerate: (input: string) => Promise<void>;
+  isGenerating: boolean;
 }
 
-export function AIInputForm({ inputMethod, onGenerate, isGenerating }: AIInputFormProps) {
-  const [input, setInput] = useState("")
-  const [error, setError] = useState("")
+export function AIInputForm({
+  inputMethod,
+  onGenerate,
+  isGenerating,
+}: AIInputFormProps) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     if (!input.trim()) {
-      setError("Please enter some text")
-      return
+      setError("Please enter some text");
+      return;
     }
 
     try {
-      await onGenerate(input)
+      await onGenerate(input);
     } catch (err) {
-      setError("Failed to generate token details. Please try again.")
+      setError("Failed to generate token details. Please try again.");
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -43,12 +47,14 @@ export function AIInputForm({ inputMethod, onGenerate, isGenerating }: AIInputFo
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             {inputMethod === "ai-joke" ? (
-              <Bot className="h-5 w-5 text-primary" />
+              <Bot className="w-5 h-5 text-primary" />
             ) : (
-              <Wand2 className="h-5 w-5 text-primary" />
+              <Wand2 className="w-5 h-5 text-primary" />
             )}
             <h3 className="font-medium">
-              {inputMethod === "ai-joke" ? "Enter your meme idea or joke" : "Enter a tweet URL"}
+              {inputMethod === "ai-joke"
+                ? "Enter your meme idea or joke"
+                : "Enter a tweet URL"}
             </h3>
           </div>
 
@@ -74,10 +80,14 @@ export function AIInputForm({ inputMethod, onGenerate, isGenerating }: AIInputFo
             </Alert>
           )}
 
-          <Button type="submit" className="w-full" disabled={isGenerating || !input.trim()}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isGenerating || !input.trim()}
+          >
             {isGenerating ? (
               <div className="flex items-center gap-2">
-                <RefreshCcw className="h-4 w-4 animate-spin" />
+                <RefreshCcw className="w-4 h-4 animate-spin" />
                 Generating...
               </div>
             ) : (
@@ -87,6 +97,5 @@ export function AIInputForm({ inputMethod, onGenerate, isGenerating }: AIInputFo
         </div>
       </Card>
     </form>
-  )
+  );
 }
-

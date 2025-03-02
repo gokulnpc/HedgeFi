@@ -27,6 +27,7 @@ import {
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createToken } from "@/services/memecoin-launchpad";
+import { generateTokenConcept } from "@/app/lib/nebula";
 
 interface TokenDetails {
   name: string;
@@ -85,9 +86,73 @@ export default function LaunchPage() {
     setError("");
   };
 
+  const generateImageWithPromptInput = async (inputPrompt: string) => {
+    if (!inputPrompt.trim()) return;
+    console.log("generating image");
+    try {
+      setError("");
+      setLoadingAI(true);
+
+      const url = "https://api.nebulablock.com/api/v1/images/generation";
+
+      const response = await fetch(url, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_NEBULA_API_KEY}`,
+        },
+
+        body: JSON.stringify({
+          model_name: "stabilityai/stable-diffusion-xl-base-1.0",
+          prompt: inputPrompt,
+          num_steps: 25,
+          guidance_scale: 9,
+          negative_prompt: null,
+          width: 1024,
+          height: 1024,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate image");
+
+      const { data } = await response.json();
+      const imageBase64 = data.image_file;
+
+      // Convert base64 to binary
+      const byteCharacters = atob(imageBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+
+      const byteArray = new Uint8Array(byteNumbers);
+
+      // Create a Blob from the binary data
+      const blob = new Blob([byteArray], { type: "image/png" });
+
+      // Create File object from blob
+      const file = new File([blob], "ai-generated.png", { type: "image/png" });
+
+      // console.log("file", file);
+
+      // setAiImageUrl(data.url);
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } catch (error) {
+      console.error("Error generating image:", error);
+      setError(
+        "Failed to generate image. Please try again or upload an image manually."
+      );
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
   const generateImage = async () => {
     if (!prompt.trim()) return;
-
+    console.log("generating image");
     try {
       setError("");
       setLoadingAI(true);
@@ -115,7 +180,7 @@ export default function LaunchPage() {
 
       if (!response.ok) throw new Error("Failed to generate image");
 
-      const {data} = await response.json();
+      const { data } = await response.json();
       const imageBase64 = data.image_file;
 
       // Convert base64 to binary
@@ -133,7 +198,6 @@ export default function LaunchPage() {
 
       // Create File object from blob
       const file = new File([blob], "ai-generated.png", { type: "image/png" });
-      console.log("force update")
 
       // console.log("file", file);
 
@@ -183,7 +247,7 @@ export default function LaunchPage() {
         description: data.description || "",
         price: "$0.00",
         priceChange: 0,
-        marketCap: "$0",
+        marketCap: "0",
         holders: "0",
         volume24h: "$0",
         launchDate: new Date().toISOString().split("T")[0],
@@ -209,23 +273,14 @@ export default function LaunchPage() {
 
   const handleGenerate = async (input: string) => {
     try {
-      setIsGenerating(true);
-      setAiInput(input);
-
-      const response = await fetch("/api/generate-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input,
-          type: inputMethod === "ai-tweet" ? "tweet" : "idea",
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to generate token details");
-
-      const data = await response.json();
-      setGeneratedDetails(data);
-      setPreviewUrl(data.imageUrl);
+      const response = await generateTokenConcept(input);
+      (response.imageUrl = ""), setPrompt(response.image_description);
+      console.log("response", response);
+      console.log("prompt", prompt, response.image_description);
+      console.log("force update");
+      setGeneratedDetails(response);
+      await generateImageWithPromptInput(response.image_description);
+      // setPreviewUrl(data.imageUrl);
     } catch (error) {
       console.error("Error generating token:", error);
       setError("Failed to generate token details");
