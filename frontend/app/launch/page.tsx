@@ -198,10 +198,6 @@ export default function LaunchPage() {
 
       // Create File object from blob
       const file = new File([blob], "ai-generated.png", { type: "image/png" });
-<<<<<<< HEAD
-=======
-      console.log("force update");
->>>>>>> bc801301a3cc53cd038dbb50d6c85570ff721a51
 
       // console.log("file", file);
 
@@ -361,22 +357,8 @@ export default function LaunchPage() {
                     <div className="space-y-6">
                       <AIInputForm
                         inputMethod={inputMethod}
-                        generatedDetails={generatedDetails}
-                        isGenerating={isGenerating}
-                        imageFile={imageFile}
-                        previewUrl={previewUrl}
-                        aiImageUrl={aiImageUrl}
-                        prompt={prompt}
-                        loadingAI={loadingAI}
-                        isLoading={isLoading}
-                        launchConfig={launchConfig}
-                        onImageSelect={handleImageSelect}
-                        onClearImage={clearImage}
-                        onPromptChange={setPrompt}
-                        onGenerateImage={generateImage}
-                        onSubmit={handleSubmit}
-                        onConfigChange={handleConfigChange}
                         onGenerate={handleGenerate}
+                        isGenerating={isGenerating}
                       />
 
                       {generatedDetails && (
