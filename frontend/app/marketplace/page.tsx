@@ -29,7 +29,7 @@ import {
 import GridBackground from "../components/GridBackground";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { MarketFilters } from "../components/MarketFilters";
 import type { Chain, FilterOption, MemeToken } from "../components/types";
@@ -38,6 +38,7 @@ import { AppLayout } from "../components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTokenStore } from "../store/tokenStore";
+import { getTokens } from "@/services/memecoin-launchpad";
 
 const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
 const DEFAULT_CHAIN_LOGO = "/chain-placeholder.svg";
@@ -222,7 +223,23 @@ const mockTokens: MemeToken[] = [
   },
 ];
 
-const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
+// Update the MemeToken interface to include the new properties
+interface ExtendedMemeToken extends MemeToken {
+  id?: string;
+  volume24h?: string;
+  holders?: string;
+  launchDate?: string;
+  status?: "active" | "inactive" | "paused";
+  creator?: string;
+}
+
+const TokenCard = ({
+  token,
+  index,
+}: {
+  token: ExtendedMemeToken;
+  index: number;
+}) => {
   const needsMarquee = token.name.length > 15;
   const [imageError, setImageError] = useState(false);
 
@@ -237,37 +254,37 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
       <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10">
         {/* Image Container */}
         <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
-          <div className="aspect-square relative overflow-hidden bg-gray-900">
-            {/* Use a div with background image as fallback for external images */}
+          <div className="aspect-square relative overflow-hidden flex justify-center items-center bg-gray-900">
+            {/* Background placeholder */}
             <div
               className="w-full h-full absolute inset-0"
               style={{
                 backgroundImage: `url(${DEFAULT_TOKEN_IMAGE})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
+                opacity: imageError ? 1 : 0.5,
               }}
             />
 
             {/* Next.js Image with error handling */}
             {!imageError && (
-              <div className="w-full h-full relative">
-                <Image
-                  src={
-                    token.imageUrl && token.imageUrl.startsWith("http")
-                      ? token.imageUrl
-                      : token.imageUrl || DEFAULT_TOKEN_IMAGE
-                  }
-                  alt={token.name}
-                  width={400}
-                  height={400}
-                  className="object-cover"
-                  priority={index < 4}
-                  onError={() => setImageError(true)}
-                  unoptimized={
-                    !!(token.imageUrl && token.imageUrl.startsWith("http"))
-                  }
-                />
-              </div>
+              <Image
+                src={
+                  token.imageUrl && token.imageUrl.startsWith("http")
+                    ? token.imageUrl
+                    : token.imageUrl || DEFAULT_TOKEN_IMAGE
+                }
+                alt={token.name}
+                width={400}
+                height={400}
+                className="object-cover w-full h-full absolute inset-0"
+                priority={index < 4}
+                onError={() => setImageError(true)}
+                unoptimized={
+                  !!(token.imageUrl && token.imageUrl.startsWith("http"))
+                }
+                style={{ maxWidth: "100%" }}
+              />
             )}
 
             {/* Network Badge */}
@@ -324,18 +341,20 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-medium text-white">
-                    {needsMarquee ? (
-                      <div className="w-[120px] overflow-hidden">
-                        <Marquee gradient={false} speed={20}>
-                          <span>{token.name}</span>
-                          <span className="mx-2">•</span>
-                        </Marquee>
-                      </div>
-                    ) : (
-                      token.name
-                    )}
-                  </h3>
+                  <Link href={`/token/${token.symbol.toLowerCase()}`}>
+                    <h3 className="text-sm font-medium text-white hover:text-blue-400 transition-colors">
+                      {needsMarquee ? (
+                        <div className="w-[120px] overflow-hidden">
+                          <Marquee gradient={false} speed={20}>
+                            <span>{token.name}</span>
+                            <span className="mx-2">•</span>
+                          </Marquee>
+                        </div>
+                      ) : (
+                        token.name
+                      )}
+                    </h3>
+                  </Link>
                   <Badge
                     variant="secondary"
                     className="h-5 px-1.5 text-[10px] font-mono"
@@ -377,13 +396,13 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
             <div>
               <div className="text-[10px] text-gray-500 mb-0.5">Volume 24h</div>
               <div className="text-sm font-medium font-mono text-white">
-                $1.2M
+                {token.volume24h}
               </div>
             </div>
             <div>
               <div className="text-[10px] text-gray-500 mb-0.5">Holders</div>
               <div className="text-sm font-medium font-mono text-white">
-                2.1K
+                {token.holders}
               </div>
             </div>
           </div>
@@ -405,6 +424,15 @@ const TokenCard = ({ token, index }: { token: MemeToken; index: number }) => {
               <span className="text-[10px] text-gray-500">Verified</span>
             </div>
           </div>
+
+          {/* Buy Button */}
+          <div className="mt-4">
+            <Link href={`/token/${token.symbol.toLowerCase()}`}>
+              <Button className="w-full" size="sm">
+                Buy {token.symbol}
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -417,12 +445,53 @@ export default function MarketplacePage() {
     useState<FilterOption["id"]>("latest");
   const [selectedChain, setSelectedChain] = useState<Chain | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [realTokens, setRealTokens] = useState<ExtendedMemeToken[]>([]);
   const itemsPerPage = 8;
 
   // Get tokens from store
   const storeTokens = useTokenStore((state) => state.tokens);
 
-  // Combine mock tokens with store tokens
+  // Fetch real tokens from the blockchain
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        setIsLoading(true);
+        // Get tokens that are open for sale (isOpen = true)
+        const tokens = await getTokens({ isOpen: true });
+
+        // Convert the tokens to match the MemeToken interface
+        const formattedTokens = tokens.map((token) => ({
+          id: token.token,
+          name: token.name,
+          symbol: token.name.substring(0, 4).toUpperCase(), // Generate a symbol if not available
+          description: token.description || "No description available",
+          imageUrl: token.image || DEFAULT_TOKEN_IMAGE,
+          price: "0.000033", // Default price, should be calculated from token data
+          marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k", // Convert wei to ETH and format
+          priceChange: Math.random() * 20 - 10, // Random price change for now
+          fundingRaised: token.raised.toString(),
+          chain: "ethereum", // Default to ethereum, should be determined from the chain ID
+          volume24h: "$" + (Math.random() * 100000).toFixed(2),
+          holders: (Math.random() * 1000).toFixed(0),
+          launchDate: new Date().toISOString().split("T")[0],
+          status: "active" as const,
+          creator: token.creator,
+        }));
+
+        setRealTokens(formattedTokens);
+      } catch (error) {
+        console.error("Error fetching tokens:", error);
+        // If there's an error, we'll fall back to mock data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTokens();
+  }, []);
+
+  // Combine mock tokens with store tokens and real tokens
   const allTokens = useMemo(() => {
     // Convert mock tokens to match Token interface
     const convertedMockTokens = mockTokens.map((token) => ({
@@ -434,22 +503,34 @@ export default function MarketplacePage() {
       status: "active" as const,
       fundingRaised: "0",
       imageUrl: token.imageUrl || DEFAULT_TOKEN_IMAGE, // Use default placeholder
-    }));
+    })) as ExtendedMemeToken[];
 
     // Ensure store tokens have valid imageUrl
     const validatedStoreTokens = storeTokens.map((token) => ({
       ...token,
       imageUrl: token.imageUrl || DEFAULT_TOKEN_IMAGE,
-    }));
+    })) as ExtendedMemeToken[];
 
+    // Prioritize real tokens, then store tokens, then mock tokens as fallback
     // Combine and remove duplicates based on symbol
-    const combined = [...convertedMockTokens, ...validatedStoreTokens];
+    const combined = [
+      ...realTokens,
+      ...validatedStoreTokens,
+      ...convertedMockTokens,
+    ];
+
+    // If we have real tokens, don't use mock tokens
+    const filteredTokens =
+      realTokens.length > 0
+        ? [...realTokens, ...validatedStoreTokens]
+        : combined;
+
     const uniqueTokens = Array.from(
-      new Map(combined.map((token) => [token.symbol, token])).values()
+      new Map(filteredTokens.map((token) => [token.symbol, token])).values()
     );
 
     return uniqueTokens;
-  }, [storeTokens]);
+  }, [storeTokens, realTokens]);
 
   const filteredTokens = useMemo(() => {
     let filtered = allTokens.filter(
@@ -467,16 +548,17 @@ export default function MarketplacePage() {
       // For "latest", sort by launch date (newest first)
       filtered = [...filtered].sort((a, b) => {
         // First prioritize tokens from the store (user-created tokens)
-        const aIsFromStore = storeTokens.some((token) => token.id === a.id);
-        const bIsFromStore = storeTokens.some((token) => token.id === b.id);
+        const aIsFromStore = storeTokens.some((t) => t.id === a.id);
+        const bIsFromStore = storeTokens.some((t) => t.id === b.id);
 
         if (aIsFromStore && !bIsFromStore) return -1;
         if (!aIsFromStore && bIsFromStore) return 1;
 
-        // Then sort by launch date
-        return (
-          new Date(b.launchDate).getTime() - new Date(a.launchDate).getTime()
-        );
+        // Then sort by launch date if available
+        const aDate = a.launchDate ? new Date(a.launchDate) : new Date();
+        const bDate = b.launchDate ? new Date(b.launchDate) : new Date();
+
+        return bDate.getTime() - aDate.getTime();
       });
     }
 
@@ -548,9 +630,36 @@ export default function MarketplacePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-            {currentTokens.map((token, index) => (
-              <TokenCard key={token.symbol} token={token} index={index} />
-            ))}
+            {isLoading ? (
+              // Show loading state
+              Array(8)
+                .fill(0)
+                .map((_, index) => (
+                  <div
+                    key={index}
+                    className="bg-black/60 rounded-2xl overflow-hidden border border-white/10 animate-pulse"
+                  >
+                    <div className="aspect-square bg-gray-800"></div>
+                    <div className="p-4 space-y-3">
+                      <div className="h-5 bg-gray-800 rounded w-2/3"></div>
+                      <div className="h-4 bg-gray-800 rounded w-1/2"></div>
+                      <div className="h-4 bg-gray-800 rounded w-full"></div>
+                      <div className="h-10 bg-gray-800 rounded w-full"></div>
+                    </div>
+                  </div>
+                ))
+            ) : currentTokens.length > 0 ? (
+              currentTokens.map((token, index) => (
+                <TokenCard key={token.symbol} token={token} index={index} />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <h3 className="text-xl font-medium mb-2">No tokens found</h3>
+                <p className="text-muted-foreground">
+                  Try adjusting your search or filters
+                </p>
+              </div>
+            )}
           </div>
 
           {totalPages > 1 && (

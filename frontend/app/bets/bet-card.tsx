@@ -1,27 +1,28 @@
-"use client"
+"use client";
 
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Share2, Twitter, CheckCircle2, XCircle, Trophy } from "lucide-react"
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { TimeLeft } from "./time-left"
-import { cn } from "@/lib/utils"
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Share2, Twitter, CheckCircle2, XCircle, Trophy } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { TimeLeft } from "./time-left";
+import { cn } from "@/lib/utils";
 
 interface Bet {
-  id: string
-  title: string
-  image: string
-  category: string
-  endDate: string
-  totalPool: number
-  yesPool: number
-  noPool: number
-  yesProbability: number
-  noProbability: number
-  isResolved?: boolean
-  result?: "yes" | "no"
+  id: string;
+  title: string;
+  image: string;
+  category: string;
+  endDate: string;
+  totalPool: number;
+  yesPool: number;
+  noPool: number;
+  yesProbability: number;
+  noProbability: number;
+  isResolved?: boolean;
+  result?: "yes" | "no";
 }
 
 export function BetCard({ bet }: { bet: Bet }) {
@@ -29,21 +30,31 @@ export function BetCard({ bet }: { bet: Bet }) {
     month: "short",
     day: "numeric",
     year: "numeric",
-  })
+  });
 
   // Calculate payout multiplier for winning side
   const winningPayout =
-    bet.result === "yes" ? (bet.totalPool / bet.yesPool).toFixed(2) : (bet.totalPool / bet.noPool).toFixed(2)
+    bet.result === "yes"
+      ? (bet.totalPool / bet.yesPool).toFixed(2)
+      : (bet.totalPool / bet.noPool).toFixed(2);
 
   return (
     <motion.div whileHover={{ y: -5 }} className="group">
       <Card className="overflow-hidden border-white/10 bg-black">
         {/* Image */}
         <div className="relative h-48">
-          <Image src={bet.image || "/placeholder.svg"} alt={bet.title} fill className="object-cover" />
+          <Image
+            src={bet.image || "/placeholder.svg"}
+            alt={bet.title}
+            fill
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
           <div className="absolute top-4 left-4">
-            <Badge variant="outline" className="bg-black/90 backdrop-blur-sm border-white/10 text-white">
+            <Badge
+              variant="outline"
+              className="bg-black/90 backdrop-blur-sm border-white/10 text-white"
+            >
               {bet.category}
             </Badge>
           </div>
@@ -53,7 +64,9 @@ export function BetCard({ bet }: { bet: Bet }) {
                 variant="outline"
                 className={cn(
                   "backdrop-blur-sm border-white/10",
-                  bet.result === "yes" ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500",
+                  bet.result === "yes"
+                    ? "bg-green-500/20 text-green-500"
+                    : "bg-red-500/20 text-red-500"
                 )}
               >
                 Resolved
@@ -77,11 +90,13 @@ export function BetCard({ bet }: { bet: Bet }) {
                       ? bet.result === "yes"
                         ? "text-green-400 font-medium"
                         : "text-gray-400"
-                      : "text-green-400",
+                      : "text-green-400"
                   )}
                 >
                   Yes {(bet.yesProbability * 100).toFixed(0)}%
-                  {bet.isResolved && bet.result === "yes" && <CheckCircle2 className="h-4 w-4" />}
+                  {bet.isResolved && bet.result === "yes" && (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
                 </span>
                 <span
                   className={cn(
@@ -90,10 +105,12 @@ export function BetCard({ bet }: { bet: Bet }) {
                       ? bet.result === "no"
                         ? "text-red-400 font-medium"
                         : "text-gray-400"
-                      : "text-red-400",
+                      : "text-red-400"
                   )}
                 >
-                  {bet.isResolved && bet.result === "no" && <XCircle className="h-4 w-4" />}
+                  {bet.isResolved && bet.result === "no" && (
+                    <XCircle className="h-4 w-4" />
+                  )}
                   No {(bet.noProbability * 100).toFixed(0)}%
                 </span>
               </div>
@@ -101,7 +118,9 @@ export function BetCard({ bet }: { bet: Bet }) {
                 <div
                   className={cn(
                     "absolute inset-y-0 left-0",
-                    bet.isResolved ? "bg-white/20" : "bg-gradient-to-r from-sky-400 to-blue-500",
+                    bet.isResolved
+                      ? "bg-white/20"
+                      : "bg-gradient-to-r from-sky-400 to-blue-500"
                   )}
                   style={{ width: `${bet.yesProbability * 100}%` }}
                 />
@@ -112,10 +131,14 @@ export function BetCard({ bet }: { bet: Bet }) {
             <div className="flex items-center justify-between text-sm">
               <div>
                 <span className="text-gray-400">Total Pool</span>
-                <div className="font-medium font-mono text-white">${bet.totalPool.toLocaleString()}</div>
+                <div className="font-medium font-mono text-white">
+                  ${bet.totalPool.toLocaleString()}
+                </div>
               </div>
               {bet.isResolved ? (
-                <div className="text-sm text-gray-400">Ended {formattedDate}</div>
+                <div className="text-sm text-gray-400">
+                  Ended {formattedDate}
+                </div>
               ) : (
                 <TimeLeft endDate={bet.endDate} />
               )}
@@ -130,16 +153,22 @@ export function BetCard({ bet }: { bet: Bet }) {
                     "flex items-center gap-2 p-3 rounded-lg border",
                     bet.result === "yes"
                       ? "bg-green-500/10 border-green-500/20 text-green-500"
-                      : "bg-red-500/10 border-red-500/20 text-red-500",
+                      : "bg-red-500/10 border-red-500/20 text-red-500"
                   )}
                 >
                   <Trophy className="h-5 w-5" />
                   <div className="flex-1">
-                    <span className="font-medium">{bet.result === "yes" ? "Yes" : "No"} was correct</span>
+                    <span className="font-medium">
+                      {bet.result === "yes" ? "Yes" : "No"} was correct
+                    </span>
                     <div className="text-sm opacity-90">
                       {bet.result === "yes"
-                        ? `${(bet.yesProbability * 100).toFixed(0)}% predicted correctly`
-                        : `${(bet.noProbability * 100).toFixed(0)}% predicted correctly`}
+                        ? `${(bet.yesProbability * 100).toFixed(
+                            0
+                          )}% predicted correctly`
+                        : `${(bet.noProbability * 100).toFixed(
+                            0
+                          )}% predicted correctly`}
                       {" • "}
                       {Number(winningPayout)}x payout
                     </div>
@@ -151,21 +180,41 @@ export function BetCard({ bet }: { bet: Bet }) {
                   <Button variant="outline" className="flex-1 border-white/10">
                     View Details
                   </Button>
-                  <Button variant="outline" size="icon" className="border-white/10">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/10"
+                  >
                     <Twitter className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="border-white/10">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-white/10"
+                  >
                     <Share2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 pt-2">
-                <Button className="flex-1 bg-gradient-to-r from-sky-400 to-blue-500">Place Bet</Button>
-                <Button variant="outline" size="icon" className="border-white/10">
+                <Link href={`/bets/place-bet?id=${bet.id}`} className="flex-1">
+                  <Button className="w-full bg-gradient-to-r from-sky-400 to-blue-500">
+                    Place Bet
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-white/10"
+                >
                   <Twitter className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="icon" className="border-white/10">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-white/10"
+                >
                   <Share2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -174,6 +223,5 @@ export function BetCard({ bet }: { bet: Bet }) {
         </div>
       </Card>
     </motion.div>
-  )
+  );
 }
-

@@ -11,6 +11,14 @@ export interface WalletState {
   networkName: string | null;
   balance: string | null;
   isAuthenticated: boolean;
+  depositHistory: {
+    amount: number;
+    timestamp: number;
+    txHash?: string;
+  }[];
+  addFunds: (amount: number, txHash?: string) => void;
+  withdrawFunds: (amount: number) => boolean;
+  getBalance: () => number;
 }
 
 interface WalletStore extends WalletState {
@@ -32,6 +40,7 @@ export const useWalletStore = create<WalletStore>()(
       networkName: null,
       balance: null,
       isAuthenticated: false,
+      depositHistory: [],
 
       // Connect wallet
       connect: async () => {
@@ -149,6 +158,7 @@ export const useWalletStore = create<WalletStore>()(
           networkName: null,
           balance: null,
           isAuthenticated: false,
+          depositHistory: [],
         });
       },
 
@@ -168,6 +178,51 @@ export const useWalletStore = create<WalletStore>()(
           console.error("Error getting contract:", error);
           return null;
         }
+      },
+
+      addFunds: (amount: number, txHash?: string) => {
+        set((state) => {
+          const currentBalance = state.balance ? parseFloat(state.balance) : 0;
+          const newBalance = (currentBalance + amount).toString();
+
+          return {
+            ...state,
+            balance: newBalance,
+            depositHistory: [
+              ...state.depositHistory,
+              {
+                amount,
+                timestamp: Date.now(),
+                txHash,
+              },
+            ],
+          };
+        });
+      },
+
+      withdrawFunds: (amount: number) => {
+        const currentBalance = get().balance ? parseFloat(get().balance) : 0;
+        if (amount > currentBalance) {
+          return false;
+        }
+
+        set((state) => {
+          // Use nullish coalescing to ensure we always have a string
+          const newBalance = (
+            parseFloat(state.balance ?? "0") - amount
+          ).toString();
+          return {
+            ...state,
+            balance: newBalance,
+          };
+        });
+
+        return true;
+      },
+
+      getBalance: () => {
+        const balance = get().balance;
+        return balance ? parseFloat(balance) : 0;
       },
     }),
     {
