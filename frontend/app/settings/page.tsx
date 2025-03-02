@@ -10,6 +10,7 @@ import { NotificationSettings } from "./components/notification-settings";
 import { SecuritySettings } from "./components/security-settings";
 import { AISettings } from "./components/ai-settings";
 import { PreferenceSettings } from "./components/preference-settings";
+import { WalletSettings } from "./components/wallet-settings";
 import {
   User,
   Share2,
@@ -85,10 +86,14 @@ export default function SettingsPage() {
 
         {/* Settings Tabs */}
         <Tabs defaultValue="profile" className="space-y-8">
-          <TabsList className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+          <TabsList className="grid grid-cols-2 lg:grid-cols-7 gap-4">
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
               Profile
+            </TabsTrigger>
+            <TabsTrigger value="wallet" className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Wallet
             </TabsTrigger>
             <TabsTrigger value="social" className="gap-2">
               <Share2 className="h-4 w-4" />
@@ -114,6 +119,10 @@ export default function SettingsPage() {
 
           <TabsContent value="profile">
             <ProfileSettings />
+          </TabsContent>
+
+          <TabsContent value="wallet">
+            <WalletSettings />
           </TabsContent>
 
           <TabsContent value="social">
