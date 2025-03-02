@@ -12,13 +12,24 @@ export const useBettingService = () => {
     category: string,
     twitterHandle: string,
     endDate: number,
-    amount: number,
+    joinAmount: number,
     initialPoolAmount: number,
     imageURL: string
   ) => {
     if (!walletClient) {
       throw new Error("Wallet client not found");
     }
+    console.log("Creating bet with parameters:", {
+      title,
+      description,
+      category,
+      twitterHandle,
+      endDate,
+      joinAmount,
+      initialPoolAmount,
+      imageURL,
+    });
+
     const provider = new ethers.BrowserProvider(walletClient);
     const signer = await provider.getSigner();
     const bettingContract = new ethers.Contract(
@@ -32,11 +43,13 @@ export const useBettingService = () => {
       category,
       twitterHandle,
       endDate,
-      amount,
-      initialPoolAmount,
-      imageURL,
+      ethers.parseEther(joinAmount.toString()),
+      ethers.parseEther(initialPoolAmount.toString()),
+      "imageURL",
       {
-        value: amount + initialPoolAmount,
+        value:
+          ethers.parseEther(joinAmount.toString()) +
+          ethers.parseEther(initialPoolAmount.toString()),
       }
     );
     const receipt = await tx.wait();
