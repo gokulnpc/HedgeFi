@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AppLayout } from "../../components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTokenStore } from "../../store/tokenStore";
+import { getUserTokens } from "@/services/memecoin-launchpad";
 
 export default function TokensPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,9 +73,50 @@ export default function TokensPage() {
     key: string;
     direction: "asc" | "desc";
   }>({ key: "value", direction: "desc" });
+  const [isLoading, setIsLoading] = useState(true);
+  const [userTokens, setUserTokens] = useState<any[]>([]);
 
   // Get tokens from store
-  const tokens = useTokenStore((state) => state.tokens);
+  const storeTokens = useTokenStore((state) => state.tokens);
+
+  // Fetch user tokens from blockchain
+  useEffect(() => {
+    const fetchUserTokens = async () => {
+      try {
+        setIsLoading(true);
+        const tokens = await getUserTokens();
+
+        // Convert blockchain tokens to match the expected format
+        const formattedTokens = tokens.map((token) => ({
+          id: token.token,
+          name: token.name,
+          symbol: token.name.substring(0, 4).toUpperCase(),
+          description: token.description || "No description available",
+          imageUrl: token.image || "/placeholder.svg",
+          price: "0.000033", // Default price, should be calculated from token data
+          marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k",
+          priceChange: Math.random() * 20 - 10, // Random price change for now
+          fundingRaised: token.raised.toString(),
+          chain: "ethereum", // Default to ethereum, should be determined from the chain ID
+          volume24h: "$" + (Math.random() * 100000).toFixed(2),
+          holders: (Math.random() * 1000).toFixed(0).toString(),
+          launchDate: new Date().toISOString().split("T")[0],
+          status: token.isOpen ? "active" : "paused",
+        }));
+
+        setUserTokens(formattedTokens);
+      } catch (error) {
+        console.error("Error fetching user tokens:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserTokens();
+  }, []);
+
+  // Combine store tokens with blockchain tokens
+  const tokens = [...storeTokens, ...userTokens];
 
   // Filter tokens based on search query and active tab
   const filteredTokens = tokens.filter((token) => {

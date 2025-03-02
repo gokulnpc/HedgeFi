@@ -2,7 +2,7 @@ import { ethers, BrowserProvider, Contract, Signer } from "ethers";
 import { pinFileToIPFS, pinJSONToIPFS, unPinFromIPFS } from "@/app/lib/pinata";
 import Factory from "../abi/Factory.json";
 import NativeLiquidityPool from "../abi/NativeLiquidityPool.json";
-import {config} from "../app/config/contract_addresses";
+import { config } from "../app/config/contract_addresses";
 
 // Define TypeScript interfaces
 interface TokenSale {
@@ -71,14 +71,16 @@ async function loadFactoryContract(): Promise<ContractObjects> {
 /**
  * Swap ETH for tokens.
  */
-export async function swapCoinforToken(token: TokenSale, amount: bigint): Promise<{ success: boolean }> {
+export async function swapCoinforToken(
+  token: TokenSale,
+  amount: bigint
+): Promise<{ success: boolean }> {
   try {
     const { signer, liquidityPool } = await loadFactoryContract();
 
-    const transaction = await liquidityPool.connect(signer).swapEthForToken(
-      token.token,
-      { value: amount }
-    );
+    const transaction = await liquidityPool
+      .connect(signer)
+      .swapEthForToken(token.token, { value: amount });
 
     const receipt = await transaction.wait();
     return { success: receipt.status === 1 };
@@ -91,14 +93,16 @@ export async function swapCoinforToken(token: TokenSale, amount: bigint): Promis
 /**
  * Swap tokens for ETH.
  */
-export async function swapTokenforCoin(tokenSale: TokenSale, tokenAmount: bigint): Promise<{ success: boolean }> {
+export async function swapTokenforCoin(
+  tokenSale: TokenSale,
+  tokenAmount: bigint
+): Promise<{ success: boolean }> {
   try {
     const { signer, liquidityPool } = await loadFactoryContract();
 
-    const transaction = await liquidityPool.connect(signer).swapTokenForEth(
-      tokenSale.token,
-      tokenAmount
-    );
+    const transaction = await liquidityPool
+      .connect(signer)
+      .swapTokenForEth(tokenSale.token, tokenAmount);
 
     const receipt = await transaction.wait();
     return { success: receipt.status === 1 };
@@ -111,23 +115,26 @@ export async function swapTokenforCoin(tokenSale: TokenSale, tokenAmount: bigint
 /**
  * Create a new token.
  */
-export async function createToken(metaData: any, image: File): Promise<{ success: boolean, imageURL?: string|null, error?: any }> {
+export async function createToken(
+  metaData: any,
+  image: File
+): Promise<{ success: boolean; imageURL?: string | null; error?: any }> {
   try {
     console.log("Uploading File to IPFS", "info", 1000);
     const imageIpfsHash = await pinFileToIPFS(image);
 
     console.log("Uploading metadata to IPFS", "info", 1000);
-    const metadataURI = await pinJSONToIPFS({ ...metaData, imageURI: imageIpfsHash });
+    const metadataURI = await pinJSONToIPFS({
+      ...metaData,
+      imageURI: imageIpfsHash,
+    });
 
     const { factory, signer } = await loadFactoryContract();
     const fee = await factory.fee();
 
-    const tx = await factory.connect(signer).create(
-      metaData.name,
-      metaData.ticker,
-      metadataURI,
-      { value: fee }
-    );
+    const tx = await factory
+      .connect(signer)
+      .create(metaData.name, metaData.ticker, metadataURI, { value: fee });
 
     const receipt = await tx.wait();
 
@@ -135,7 +142,7 @@ export async function createToken(metaData: any, image: File): Promise<{ success
       return { success: true, imageURL: imageIpfsHash };
     } else {
       if (imageIpfsHash) await unPinFromIPFS(imageIpfsHash);
-      if(metadataURI) await unPinFromIPFS(metadataURI);
+      if (metadataURI) await unPinFromIPFS(metadataURI);
       return { success: false, error: "Transaction failed" };
     }
   } catch (error) {
@@ -147,7 +154,10 @@ export async function createToken(metaData: any, image: File): Promise<{ success
 /**
  * Buy tokens.
  */
-export async function buyToken(tokenSale: TokenSale, amount: bigint): Promise<{ success: boolean, error?: any }> {
+export async function buyToken(
+  tokenSale: TokenSale,
+  amount: bigint
+): Promise<{ success: boolean; error?: any }> {
   try {
     if (!tokenSale.isOpen) return { success: false };
 
@@ -155,12 +165,12 @@ export async function buyToken(tokenSale: TokenSale, amount: bigint): Promise<{ 
 
     const cost = await factory.getCost(tokenSale.sold);
     const totalCost = cost * amount;
-    
-    const transaction = await factory.connect(signer).buy(
-      tokenSale.token,
-      ethers.parseUnits(amount.toString(), 18),
-      { value: totalCost }
-    );
+
+    const transaction = await factory
+      .connect(signer)
+      .buy(tokenSale.token, ethers.parseUnits(amount.toString(), 18), {
+        value: totalCost,
+      });
 
     const receipt = await transaction.wait();
     return { success: receipt.status === 1 };
@@ -190,7 +200,7 @@ export async function getAllTokens(): Promise<Token[]> {
       raised: tokenSale.raised,
       isOpen: tokenSale.isOpen,
       image: metadata.imageURI,
-      description: metadata.description
+      description: metadata.description,
     });
   }
 
@@ -218,7 +228,39 @@ export async function getTokens(isOpen: boolean): Promise<Token[]> {
         raised: tokenSale.raised,
         isOpen: tokenSale.isOpen,
         image: metadata.imageURI,
-        description: metadata.description
+        description: metadata.description,
+      });
+    }
+  }
+
+  return tokens.reverse();
+}
+
+/**
+ * Fetch tokens created by the current user.
+ */
+export async function getUserTokens(): Promise<Token[]> {
+  const { factory, signer } = await loadFactoryContract();
+  const totalTokens = await factory.totalTokens();
+  const tokens: Token[] = [];
+  const userAddress = await signer.getAddress();
+
+  for (let i = 0; i < totalTokens; ++i) {
+    const tokenSale: TokenSale = await factory.getTokenSale(i);
+
+    // Check if the token was created by the current user
+    if (tokenSale.creator.toLowerCase() === userAddress.toLowerCase()) {
+      const metadata = await fetchMetadata(tokenSale.metadataURI);
+
+      tokens.push({
+        token: tokenSale.token,
+        name: tokenSale.name,
+        creator: tokenSale.creator,
+        sold: tokenSale.sold,
+        raised: tokenSale.raised,
+        isOpen: tokenSale.isOpen,
+        image: metadata.imageURI,
+        description: metadata.description,
       });
     }
   }
@@ -229,7 +271,9 @@ export async function getTokens(isOpen: boolean): Promise<Token[]> {
 /**
  * Fetch metadata from IPFS.
  */
-async function fetchMetadata(metadataURI: string): Promise<{ name: string; description: string; imageURI: string }> {
+async function fetchMetadata(
+  metadataURI: string
+): Promise<{ name: string; description: string; imageURI: string }> {
   if (!metadataURI) return { name: "Unknown", description: "", imageURI: "" };
 
   try {
@@ -238,6 +282,10 @@ async function fetchMetadata(metadataURI: string): Promise<{ name: string; descr
     return await response.json();
   } catch (error) {
     console.log(`Failed to fetch metadata for ${metadataURI}:`, error);
-    return { name: "Unknown", description: "No description available", imageURI: "" };
+    return {
+      name: "Unknown",
+      description: "No description available",
+      imageURI: "",
+    };
   }
 }
