@@ -268,3 +268,38 @@ async function fetchMetadata(
   }
 }
 
+
+
+export async function getPriceForTokens(tokenSale: TokenSale,amount: bigint){
+  const CAP_AMOUNT = ethers.parseUnits("10000", 18);
+  const amountEthers = ethers.parseUnits(amount.toString(), 18);
+  if (tokenSale.isOpen === false || amountEthers > CAP_AMOUNT){
+    return 0;
+  }
+  const { factory, signer } = await loadFactoryContract();
+  const cost = await factory.getPriceForTokens(tokenSale.token, amount);
+  console.log("getPriceForTokens: ", getPriceForTokens);
+  return cost;
+}
+
+export async function getEstimatedTokensForEth(tokenSale: TokenSale, ethAmount: bigint){
+  const ethAmountEthers = ethers.parseUnits(ethAmount.toString(), 18);
+  if (tokenSale.isOpen === true){
+    return 0;
+  }
+  const { factory } = await loadFactoryContract();
+  const tokens = await factory.getEstimatedTokensForEth(tokenSale.token, ethAmountEthers);
+  console.log("getEstimatedTokensForEth: ", getEstimatedTokensForEth);
+  return tokens;
+}
+
+export async function getEstimatedEthForTokens(tokenSale: TokenSale, tokenAmount: bigint){
+  const tokenAmountEthers = ethers.parseUnits(tokenAmount.toString(), 18);
+  if (tokenSale.isOpen === true){
+    return 0;
+  }
+  const { factory } = await loadFactoryContract();
+  const eth = await factory.getEstimatedEthForTokens(tokenSale.token, tokenAmountEthers);
+  console.log("getEstimatedEthForTokens: ", getEstimatedEthForTokens);
+  return eth;
+}
