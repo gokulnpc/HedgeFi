@@ -45,7 +45,7 @@ export const useBettingService = () => {
       endDate,
       ethers.parseEther(joinAmount.toString()),
       ethers.parseEther(initialPoolAmount.toString()),
-      "imageURL",
+      imageURL,
       {
         value:
           ethers.parseEther(joinAmount.toString()) +
@@ -106,10 +106,92 @@ export const useBettingService = () => {
     return receipt;
   };
 
+  const getAllBets = async () => {
+    if (!walletClient) {
+      console.warn("Wallet client not found, waiting for connection...");
+
+      // Try to use a read-only provider if wallet is not connected
+      try {
+        // Use a public provider for read-only operations if wallet is not connected
+        const provider = new ethers.JsonRpcProvider(
+          "https://testnet.aurora.dev"
+        );
+        const bettingContract = new ethers.Contract(
+          contractAddress,
+          BettingABI,
+          provider
+        );
+        const betCounter = await bettingContract.betCounter();
+        console.log("Bet counter (read-only mode):", betCounter);
+
+        const bets = [];
+        for (let i = 0; i < betCounter; i++) {
+          const betDetails = await bettingContract.getBetDetailsAsStruct(i);
+          bets.push({
+            id: betDetails[0],
+            creator: betDetails[1],
+            amount: betDetails[2],
+            title: betDetails[3],
+            description: betDetails[4],
+            category: betDetails[5],
+            twitterHandle: betDetails[6],
+            endDate: betDetails[7],
+            initialPoolAmount: betDetails[8],
+            imageURL: betDetails[9],
+            isClosed: betDetails[10],
+            supportCount: betDetails[11],
+            againstCount: betDetails[12],
+            outcome: betDetails[13],
+          });
+        }
+        return bets;
+      } catch (error) {
+        console.error("Failed to use read-only provider:", error);
+        return []; // Return empty array instead of throwing
+      }
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(walletClient);
+      const bettingContract = new ethers.Contract(
+        contractAddress,
+        BettingABI,
+        provider
+      );
+      const betCounter = await bettingContract.betCounter();
+      console.log("Bet counter:", betCounter);
+      const bets = [];
+      for (let i = 0; i < betCounter; i++) {
+        const betDetails = await bettingContract.getBetDetailsAsStruct(i);
+        bets.push({
+          id: betDetails[0],
+          creator: betDetails[1],
+          amount: betDetails[2],
+          title: betDetails[3],
+          description: betDetails[4],
+          category: betDetails[5],
+          twitterHandle: betDetails[6],
+          endDate: betDetails[7],
+          initialPoolAmount: betDetails[8],
+          imageURL: betDetails[9],
+          isClosed: betDetails[10],
+          supportCount: betDetails[11],
+          againstCount: betDetails[12],
+          outcome: betDetails[13],
+        });
+      }
+      return bets;
+    } catch (error) {
+      console.error("Error in getAllBets:", error);
+      return []; // Return empty array on error rather than throwing
+    }
+  };
+
   return {
     createBet,
     joinBet,
     closeBet,
     withdraw,
+    getAllBets,
   };
 };
