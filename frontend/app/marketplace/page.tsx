@@ -471,20 +471,6 @@ export default function MarketplacePage() {
 
         console.log("Fetched tokens from blockchain:", tokens);
 
-        // Add a mock token for testing
-        const mockToken = {
-          token: "0x1234567890123456789012345678901234567890",
-          name: "Sample Token",
-          creator: "0xabcdef1234567890abcdef1234567890abcdef12",
-          sold: "1000000000000000000",
-          raised: "1000000000000000000",
-          isOpen: true,
-          image: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
-          description: "This is a sample token for testing",
-        };
-
-        tokens.push(mockToken);
-
         // Convert the tokens to match the MemeToken interface
         const formattedTokens = tokens.map((token) => ({
           id: token.token,
@@ -510,33 +496,10 @@ export default function MarketplacePage() {
       } catch (error) {
         console.error("Error fetching tokens:", error);
         // If there's an error, we'll fall back to mock data
-
-        // Add a mock token for testing even in case of error
-        const mockFormattedToken = {
-          id: "0x1234567890123456789012345678901234567890",
-          token: "0x1234567890123456789012345678901234567890",
-          name: "Sample Token",
-          symbol: "SAM",
-          description: "This is a sample token for testing",
-          imageUrl: "https://via.placeholder.com/400x400.png?text=SAM", // Use a placeholder image URL
-          price: "0.000033",
-          marketCap: "1.0k",
-          priceChange: 5.0,
-          fundingRaised: "1000000000000000000",
-          chain: "ethereum",
-          volume24h: "$10000.00",
-          holders: "100",
-          launchDate: new Date().toISOString().split("T")[0],
-          status: "active" as const,
-          creator: "0xabcdef1234567890abcdef1234567890abcdef12",
-        };
-
-        setRealTokens([mockFormattedToken]);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchTokens();
   }, []);
 
@@ -563,17 +526,10 @@ export default function MarketplacePage() {
 
     // Prioritize real tokens, then store tokens, then mock tokens as fallback
     // Combine and remove duplicates based on symbol
-    const combined = [
-      ...realTokens,
-      ...validatedStoreTokens,
-      ...convertedMockTokens,
-    ];
+    const combined = [...realTokens, ...convertedMockTokens];
 
     // If we have real tokens, don't use mock tokens
-    const filteredTokens =
-      realTokens.length > 0
-        ? [...realTokens, ...validatedStoreTokens]
-        : combined;
+    const filteredTokens = realTokens.length > 0 ? [...realTokens] : combined;
 
     const uniqueTokens = Array.from(
       new Map(filteredTokens.map((token) => [token.symbol, token])).values()
