@@ -2,28 +2,33 @@
 
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { useWallet } from "../../providers/WalletProvider";
 import { Loader2, Wallet } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useBettingService } from "@/services/BettingService";
+import { ethers } from "ethers";
 
 export function WalletSettings() {
   const { address, isConnected } = useAccount();
-  const { balance, connect, addFunds, withdrawFunds } = useWallet();
+  const bettingService = useBettingService();
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [betCredits, setBetCredits] = useState<string>("0");
 
-  const handleConnectWallet = async () => {
-    try {
-      await connect();
-      toast.success("Wallet connected successfully");
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
-      toast.error("Failed to connect wallet");
+  // Fetch bet credits when address changes or component mounts
+  const fetchBetCredits = async () => {
+    if (address) {
+      try {
+        const credits = await bettingService.getUserBetCredits(address);
+        setBetCredits(ethers.formatEther(credits));
+        console.log("Bet credits:", credits);
+      } catch (error) {
+        console.error("Error fetching bet credits:", error);
+      }
     }
   };
 
@@ -35,20 +40,15 @@ export function WalletSettings() {
 
     setIsDepositing(true);
     try {
-      // Simulate transaction delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Add funds to wallet
-      addFunds(
-        parseFloat(depositAmount),
-        "0x" + Math.random().toString(16).slice(2)
+      const tx = await bettingService.buyBetCredits(depositAmount);
+      toast.success(
+        `Successfully deposited ${depositAmount} ETH worth of bet credits`
       );
-
-      toast.success(`Successfully deposited ${depositAmount} ETH`);
       setDepositAmount("");
-    } catch (error) {
+      await fetchBetCredits(); // Refresh bet credits
+    } catch (error: any) {
       console.error("Error depositing funds:", error);
-      toast.error("Failed to deposit funds");
+      toast.error(error.message || "Failed to deposit funds");
     } finally {
       setIsDepositing(false);
     }
@@ -62,18 +62,15 @@ export function WalletSettings() {
 
     setIsWithdrawing(true);
     try {
-      // Attempt to withdraw funds
-      const success = withdrawFunds(parseFloat(withdrawAmount));
-
-      if (success) {
-        toast.success(`Successfully withdrew ${withdrawAmount} ETH`);
-        setWithdrawAmount("");
-      } else {
-        toast.error("Insufficient funds for withdrawal");
-      }
-    } catch (error) {
+      const tx = await bettingService.withdrawCredits(withdrawAmount);
+      toast.success(
+        `Successfully withdrew ${withdrawAmount} ETH worth of bet credits`
+      );
+      setWithdrawAmount("");
+      await fetchBetCredits(); // Refresh bet credits
+    } catch (error: any) {
       console.error("Error withdrawing funds:", error);
-      toast.error("Failed to withdraw funds");
+      toast.error(error.message || "Failed to withdraw funds");
     } finally {
       setIsWithdrawing(false);
     }
@@ -84,7 +81,7 @@ export function WalletSettings() {
       <div>
         <h3 className="text-lg font-medium">Wallet Settings</h3>
         <p className="text-sm text-muted-foreground">
-          Manage your wallet connection and funds for HedgeFi.
+          Manage your bet credits and wallet connection for HedgeFi.
         </p>
       </div>
 
@@ -93,7 +90,7 @@ export function WalletSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="h-5 w-5" />
-              Wallet
+              Wallet & Bet Credits
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -101,10 +98,10 @@ export function WalletSettings() {
               <div className="space-y-4">
                 <div className="p-4 bg-white/5 rounded-lg">
                   <div className="text-sm text-muted-foreground mb-1">
-                    Your Balance
+                    Your Bet Credits
                   </div>
                   <div className="text-2xl font-medium font-mono">
-                    {balance ? parseFloat(balance).toFixed(3) : "0.000"} ETH
+                    {betCredits} ETH
                   </div>
                 </div>
 
@@ -118,7 +115,7 @@ export function WalletSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-sm font-medium">Add Funds</div>
+                  <div className="text-sm font-medium">Buy Bet Credits</div>
                   <div className="flex gap-2">
                     <Input
                       type="number"
@@ -137,13 +134,15 @@ export function WalletSettings() {
                       {isDepositing && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Deposit
+                      Buy Credits
                     </Button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-sm font-medium">Withdraw Funds</div>
+                  <div className="text-sm font-medium">
+                    Withdraw Bet Credits
+                  </div>
                   <div className="flex gap-2">
                     <Input
                       type="number"
@@ -171,10 +170,10 @@ export function WalletSettings() {
             ) : (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Connect your wallet to manage your funds and create
+                  Connect your wallet to manage your bet credits and create
                   predictions.
                 </p>
-                <Button onClick={handleConnectWallet} className="w-full">
+                <Button onClick={() => {}} className="w-full">
                   Connect Wallet
                 </Button>
               </div>
@@ -192,7 +191,7 @@ export function WalletSettings() {
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                View your recent transactions and deposit history.
+                View your recent bet credit transactions.
               </p>
 
               {/* This would be populated with actual transaction data */}
