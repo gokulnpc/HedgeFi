@@ -92,20 +92,54 @@ export default function LaunchPage() {
       setError("");
       setLoadingAI(true);
 
-      const response = await fetch("/api/generate-image", {
+      const url = "https://api.nebulablock.com/api/v1/images/generation";
+
+      const response = await fetch(url, {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_NEBULA_API_KEY}`,
         },
-        body: JSON.stringify({ prompt }),
+
+        body: JSON.stringify({
+          model_name: "stabilityai/stable-diffusion-xl-base-1.0",
+          prompt: prompt,
+          num_steps: 25,
+          guidance_scale: 9,
+          negative_prompt: null,
+          width: 1024,
+          height: 1024,
+        }),
       });
 
       if (!response.ok) throw new Error("Failed to generate image");
 
-      const data = await response.json();
-      setAiImageUrl(data.url);
-      setImageFile(null);
-      setPreviewUrl(null);
+      const {data} = await response.json();
+      const imageBase64 = data.image_file;
+
+      // Convert base64 to binary
+      const byteCharacters = atob(imageBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+
+      const byteArray = new Uint8Array(byteNumbers);
+
+      // Create a Blob from the binary data
+      const blob = new Blob([byteArray], { type: "image/png" });
+
+      // Create File object from blob
+      const file = new File([blob], "ai-generated.png", { type: "image/png" });
+      console.log("force update")
+
+      // console.log("file", file);
+
+      // setAiImageUrl(data.url);
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
     } catch (error) {
       console.error("Error generating image:", error);
       setError(
@@ -118,28 +152,27 @@ export default function LaunchPage() {
 
   const handleSubmit = async (data: Record<string, string>) => {
     console.log("Submitting data:", data); // Debug log
-    console.log("Image file:", imageFile); 
+    console.log("Image file:", imageFile);
     // ========= Thong added this ================
     try {
       if (!imageFile) {
         setError("Please upload an image or generate one using AI");
         return;
       }
-      
+
       setIsLoading(true);
       let imageUrl = "";
 
       const metaData = {
         name: data.name.trim(),
         ticker: data.symbol.trim(),
-        description: data.description || ""
+        description: data.description || "",
       };
       const result = await createToken(metaData, imageFile);
 
       if (!result.success) {
         setError("Failed to create token");
       }
-  
 
       // Create a new token object
       const newToken: Token = {
@@ -166,7 +199,6 @@ export default function LaunchPage() {
       setCreatedToken(newToken);
       setShowSuccessDialog(true);
       return result.success;
-
     } catch (error) {
       console.error("Error creating token:", error);
       setError("Failed to create token. Please try again.");
@@ -226,7 +258,7 @@ export default function LaunchPage() {
       <GridBackground />
       <div className="py-8">
         <div className="container max-w-7xl">
-          <div className="flex flex-col items-center text-center space-y-4 mb-12">
+          <div className="flex flex-col items-center mb-12 space-y-4 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -236,10 +268,10 @@ export default function LaunchPage() {
               <Badge variant="secondary" className="mb-4">
                 Token Launch Platform
               </Badge>
-              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-sky-400 via-blue-500 to-purple-500 text-transparent bg-clip-text">
+              <h1 className="text-4xl font-bold text-transparent md:text-5xl bg-gradient-to-r from-sky-400 via-blue-500 to-purple-500 bg-clip-text">
                 Launch Your Meme Token
               </h1>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              <p className="max-w-2xl mx-auto text-lg text-muted-foreground">
                 Create, deploy, and manage your meme token with our secure and
                 automated platform. No coding required.
               </p>
@@ -316,8 +348,8 @@ export default function LaunchPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <Check className="h-4 w-4 text-green-500" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/20">
+                <Check className="w-4 h-4 text-green-500" />
               </div>
               Token Created Successfully
             </DialogTitle>
@@ -330,7 +362,7 @@ export default function LaunchPage() {
                     <img
                       src={createdToken.imageUrl || "/placeholder.svg"}
                       alt={createdToken.name || "Token"}
-                      className="h-12 w-12 rounded-full"
+                      className="w-12 h-12 rounded-full"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "/placeholder.svg";
                       }}

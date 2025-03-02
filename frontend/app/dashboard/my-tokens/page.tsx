@@ -76,16 +76,14 @@ export default function TokensPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userTokens, setUserTokens] = useState<any[]>([]);
 
-  // Get tokens from store
-  const storeTokens = useTokenStore((state) => state.tokens);
-
   // Fetch user tokens from blockchain
   useEffect(() => {
     const fetchUserTokens = async () => {
       try {
         setIsLoading(true);
         const tokens = await getTokens({ isCreator: true });
-
+        console.log("token 123", tokens);
+        console.log("Force udpate");
         // Convert blockchain tokens to match the expected format
         const formattedTokens = tokens.map((token) => ({
           id: token.token,
@@ -97,7 +95,7 @@ export default function TokensPage() {
           marketCap: (Number(token.raised) / 1e18).toFixed(2) + "k",
           priceChange: Math.random() * 20 - 10, // Random price change for now
           fundingRaised: token.raised.toString(),
-          chain: "ethereum", // Default to ethereum, should be determined from the chain ID
+          chain: "NEAR", // Default to ethereum, should be determined from the chain ID
           volume24h: "$" + (Math.random() * 100000).toFixed(2),
           holders: (Math.random() * 1000).toFixed(0).toString(),
           launchDate: new Date().toISOString().split("T")[0],
@@ -116,7 +114,7 @@ export default function TokensPage() {
   }, []);
 
   // Combine store tokens with blockchain tokens
-  const tokens = [...storeTokens, ...userTokens];
+  const tokens = [...userTokens];
 
   // Filter tokens based on search query and active tab
   const filteredTokens = tokens.filter((token) => {
@@ -194,7 +192,7 @@ export default function TokensPage() {
             transition={{ duration: 0.5 }}
             className="space-y-4"
           >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-3xl font-bold">
                   My
@@ -210,7 +208,7 @@ export default function TokensPage() {
               <div className="flex items-center gap-2">
                 <Link href="/launch">
                   <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
+                    <Plus className="w-4 h-4" />
                     Create New Token
                   </Button>
                 </Link>
@@ -218,10 +216,10 @@ export default function TokensPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+              <Card className="overflow-hidden border-white/10 bg-black/60 backdrop-blur-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <Rocket className="h-5 w-5 text-sky-400" />
+                    <Rocket className="w-5 h-5 text-sky-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
@@ -234,10 +232,10 @@ export default function TokensPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+              <Card className="overflow-hidden border-white/10 bg-black/60 backdrop-blur-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <Users className="h-5 w-5 text-purple-400" />
+                    <Users className="w-5 h-5 text-purple-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
@@ -251,10 +249,10 @@ export default function TokensPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+              <Card className="overflow-hidden border-white/10 bg-black/60 backdrop-blur-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <DollarSign className="h-5 w-5 text-green-400" />
+                    <DollarSign className="w-5 h-5 text-green-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
@@ -270,10 +268,10 @@ export default function TokensPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden">
+              <Card className="overflow-hidden border-white/10 bg-black/60 backdrop-blur-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <TrendingUp className="h-5 w-5 text-yellow-400" />
+                    <TrendingUp className="w-5 h-5 text-yellow-400" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">24h Volume</p>
@@ -285,10 +283,10 @@ export default function TokensPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden xl:col-span-1">
+              <Card className="overflow-hidden border-white/10 bg-black/60 backdrop-blur-xl xl:col-span-1">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <TrendingUp className="h-5 w-5 text-green-400" />
+                    <TrendingUp className="w-5 h-5 text-green-400" />
                     <p className="text-base font-medium">Best Performer</p>
                   </div>
                   <div className="mt-2">
@@ -298,20 +296,20 @@ export default function TokensPage() {
                       </div>
                       <Badge
                         variant="default"
-                        className="bg-green-500/20 text-green-500"
+                        className="text-green-500 bg-green-500/20"
                       >
                         +{bestPerformer?.priceChange.toFixed(2)}%
                       </Badge>
                     </div>
-                    <p className="text-muted-foreground text-sm">24h change</p>
+                    <p className="text-sm text-muted-foreground">24h change</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-black/60 backdrop-blur-xl overflow-hidden xl:col-span-1">
+              <Card className="overflow-hidden border-white/10 bg-black/60 backdrop-blur-xl xl:col-span-1">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <TrendingDown className="h-5 w-5 text-red-400" />
+                    <TrendingDown className="w-5 h-5 text-red-400" />
                     <p className="text-base font-medium">Worst Performer</p>
                   </div>
                   <div className="mt-2">
@@ -321,18 +319,18 @@ export default function TokensPage() {
                       </div>
                       <Badge
                         variant="destructive"
-                        className="bg-red-500/20 text-red-500"
+                        className="text-red-500 bg-red-500/20"
                       >
                         {worstPerformer?.priceChange.toFixed(2)}%
                       </Badge>
                     </div>
-                    <p className="text-muted-foreground text-sm">24h change</p>
+                    <p className="text-sm text-muted-foreground">24h change</p>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
               <Tabs
                 defaultValue="all"
                 className="w-full"
@@ -345,7 +343,7 @@ export default function TokensPage() {
                 </TabsList>
               </Tabs>
 
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex w-full gap-2 md:w-auto">
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -359,7 +357,7 @@ export default function TokensPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon">
-                      <Filter className="h-4 w-4" />
+                      <Filter className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -382,31 +380,31 @@ export default function TokensPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b border-white/10">
-                      <TableHead className="text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="text-xs font-medium text-gray-400 uppercase">
                         Token
                       </TableHead>
-                      <TableHead className="text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="text-xs font-medium text-gray-400 uppercase">
                         Price
                       </TableHead>
-                      <TableHead className="hidden md:table-cell text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="hidden text-xs font-medium text-gray-400 uppercase md:table-cell">
                         Market Cap
                       </TableHead>
-                      <TableHead className="hidden md:table-cell text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="hidden text-xs font-medium text-gray-400 uppercase md:table-cell">
                         Holders
                       </TableHead>
-                      <TableHead className="hidden md:table-cell text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="hidden text-xs font-medium text-gray-400 uppercase md:table-cell">
                         24h Volume
                       </TableHead>
-                      <TableHead className="hidden lg:table-cell text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="hidden text-xs font-medium text-gray-400 uppercase lg:table-cell">
                         Launch Date
                       </TableHead>
-                      <TableHead className="hidden lg:table-cell text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="hidden text-xs font-medium text-gray-400 uppercase lg:table-cell">
                         Chain
                       </TableHead>
-                      <TableHead className="hidden lg:table-cell text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="hidden text-xs font-medium text-gray-400 uppercase lg:table-cell">
                         Status
                       </TableHead>
-                      <TableHead className="text-xs uppercase text-gray-400 font-medium">
+                      <TableHead className="text-xs font-medium text-gray-400 uppercase">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -415,14 +413,14 @@ export default function TokensPage() {
                     {filteredTokens.map((token) => (
                       <TableRow
                         key={token.id}
-                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                        className="transition-colors border-b border-white/5 hover:bg-white/5"
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <img
                               src={token.imageUrl || "/placeholder.svg"}
                               alt={token.name}
-                              className="h-10 w-10 rounded-full border border-white/10"
+                              className="w-10 h-10 border rounded-full border-white/10"
                             />
                             <div>
                               <div className="font-medium">{token.name}</div>
@@ -445,9 +443,9 @@ export default function TokensPage() {
                             }`}
                           >
                             {token.priceChange >= 0 ? (
-                              <TrendingUp className="h-3 w-3 mr-1" />
+                              <TrendingUp className="w-3 h-3 mr-1" />
                             ) : (
-                              <TrendingDown className="h-3 w-3 mr-1" />
+                              <TrendingDown className="w-3 h-3 mr-1" />
                             )}
                             {token.priceChange >= 0 ? "+" : ""}
                             {token.priceChange}%
@@ -507,11 +505,11 @@ export default function TokensPage() {
                         <TableCell className="hidden lg:table-cell">
                           <Badge
                             variant="outline"
-                            className="bg-black/40 border-white/20 px-2 py-1"
+                            className="px-2 py-1 bg-black/40 border-white/20"
                           >
                             {token.chain}
                           </Badge>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="mt-1 text-xs text-gray-500">
                             {token.chain === "ETH"
                               ? "Ethereum"
                               : token.chain === "BSC"
@@ -534,7 +532,7 @@ export default function TokensPage() {
                           >
                             {token.status === "active" ? "Active" : "Paused"}
                           </Badge>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="mt-1 text-xs text-gray-500">
                             {token.status === "active"
                               ? "Trading enabled"
                               : "Trading paused"}
@@ -546,9 +544,9 @@ export default function TokensPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 rounded-full"
+                                className="w-8 h-8 rounded-full"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -559,29 +557,29 @@ export default function TokensPage() {
                                 Token Actions
                               </DropdownMenuLabel>
                               <DropdownMenuSeparator className="bg-white/10" />
-                              <DropdownMenuItem className="flex items-center gap-2 text-sm hover:bg-white/5 cursor-pointer">
-                                <Rocket className="h-4 w-4 text-blue-400" />
+                              <DropdownMenuItem className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5">
+                                <Rocket className="w-4 h-4 text-blue-400" />
                                 <span>Boost Marketing</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="flex items-center gap-2 text-sm hover:bg-white/5 cursor-pointer">
-                                <Users className="h-4 w-4 text-purple-400" />
+                              <DropdownMenuItem className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5">
+                                <Users className="w-4 h-4 text-purple-400" />
                                 <span>View Holders</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="flex items-center gap-2 text-sm hover:bg-white/5 cursor-pointer">
-                                <DollarSign className="h-4 w-4 text-green-400" />
+                              <DropdownMenuItem className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5">
+                                <DollarSign className="w-4 h-4 text-green-400" />
                                 <span>Add Liquidity</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="flex items-center gap-2 text-sm hover:bg-white/5 cursor-pointer">
-                                <LinkIcon className="h-4 w-4 text-yellow-400" />
+                              <DropdownMenuItem className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5">
+                                <LinkIcon className="w-4 h-4 text-yellow-400" />
                                 <span>View on Explorer</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="flex items-center gap-2 text-sm hover:bg-white/5 cursor-pointer">
-                                <Share2 className="h-4 w-4 text-sky-400" />
+                              <DropdownMenuItem className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5">
+                                <Share2 className="w-4 h-4 text-sky-400" />
                                 <span>Share Token</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-white/10" />
-                              <DropdownMenuItem className="flex items-center gap-2 text-sm hover:bg-white/5 cursor-pointer">
-                                <Settings className="h-4 w-4 text-gray-400" />
+                              <DropdownMenuItem className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/5">
+                                <Settings className="w-4 h-4 text-gray-400" />
                                 <span>Token Settings</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
