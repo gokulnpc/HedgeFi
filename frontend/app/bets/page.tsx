@@ -82,7 +82,7 @@ export default function BetsPage() {
 
         // Get bets from blockchain
         const allBets = await bettingService.getAllBets();
-        console.log("Fetched bets:", allBets);
+        // console.log("Fetched bets:", allBets);
 
         // Handle empty or error cases
         if (!allBets || allBets.length === 0) {

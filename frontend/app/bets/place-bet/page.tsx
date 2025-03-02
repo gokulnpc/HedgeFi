@@ -49,7 +49,7 @@ export default function PlaceBetPage() {
       try {
         // Fetch all bets from the blockchain
         const allBets = await bettingService.getAllBets();
-        console.log("Fetched bets for place-bet page:", allBets);
+        // console.log("Fetched bets for place-bet page:", allBets);
 
         // Find the specific bet by ID
         const foundBet = allBets.find((bet) => String(bet.id) === betId);

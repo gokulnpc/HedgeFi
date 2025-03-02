@@ -76,13 +76,10 @@ export const useBettingService = () => {
       BettingABI,
       signer
     );
-    const estimatedGas = await bettingContract.joinBet(betId, support, {
-      value: ethers.parseEther(betAmount), // Use the provided bet amount
-      gasLimit: 10000000,
-    });
+
     const tx = await bettingContract.joinBet(betId, support, {
       value: ethers.parseEther(betAmount), // Use the provided bet amount
-      gasLimit: estimatedGas.gasLimit,
+      gasLimit: 9000000,
     });
     const receipt = await tx.wait();
     return receipt;
@@ -136,7 +133,7 @@ export const useBettingService = () => {
           provider
         );
         const betCounter = await bettingContract.betCounter();
-        console.log("Bet counter (read-only mode):", betCounter);
+        // console.log("Bet counter (read-only mode):", betCounter);
 
         const bets = [];
         for (let i = 0; i < betCounter; i++) {
@@ -173,7 +170,7 @@ export const useBettingService = () => {
         provider
       );
       const betCounter = await bettingContract.betCounter();
-      console.log("Bet counter:", betCounter);
+      // console.log("Bet counter:", betCounter);
       const bets = [];
       for (let i = 0; i < betCounter; i++) {
         const betDetails = await bettingContract.getBetDetailsAsStruct(i);
@@ -201,11 +198,110 @@ export const useBettingService = () => {
     }
   };
 
+  const registerTwitterHandle = async (twitterHandle: string) => {
+    if (!walletClient) {
+      throw new Error("Wallet client not found");
+    }
+    console.log("Registering Twitter handle:", twitterHandle);
+    const provider = new ethers.BrowserProvider(walletClient);
+    const signer = await provider.getSigner();
+    const bettingContract = new ethers.Contract(
+      contractAddress,
+      BettingABI,
+      signer
+    );
+    const tx = await bettingContract.registerTwitterHandle(twitterHandle);
+    const receipt = await tx.wait();
+    return receipt;
+  };
+
+  const buyBetCredits = async (amount: string) => {
+    if (!walletClient) {
+      throw new Error("Wallet client not found");
+    }
+    if (parseFloat(amount) <= 0) {
+      throw new Error("Must send some ether");
+    }
+    console.log("Buying bet credits with amount:", amount);
+    const provider = new ethers.BrowserProvider(walletClient);
+    const signer = await provider.getSigner();
+    const bettingContract = new ethers.Contract(
+      contractAddress,
+      BettingABI,
+      signer
+    );
+    const tx = await bettingContract.buyBetCredits({
+      value: ethers.parseEther(amount),
+    });
+    const receipt = await tx.wait();
+    return receipt;
+  };
+
+  const getUserBetCredits = async (user: string) => {
+    if (!walletClient) {
+      throw new Error("Wallet client not found");
+    }
+    console.log("Getting bet credits for user:", user);
+    const provider = new ethers.BrowserProvider(walletClient);
+    const bettingContract = new ethers.Contract(
+      contractAddress,
+      BettingABI,
+      provider
+    );
+    const userBetCredits = await bettingContract.getUserBetCredits(user);
+    return userBetCredits;
+  };
+
+  const getTwitterHandleAddress = async (twitterHandle: string) => {
+    if (!walletClient) {
+      throw new Error("Wallet client not found");
+    }
+    console.log("Getting address for Twitter handle:", twitterHandle);
+    const provider = new ethers.BrowserProvider(walletClient);
+    const bettingContract = new ethers.Contract(
+      contractAddress,
+      BettingABI,
+      provider
+    );
+    const address = await bettingContract.getTwitterHandleAddress(
+      twitterHandle
+    );
+    return address;
+  };
+
+  const withdrawCredits = async (amount: string) => {
+    if (!walletClient) {
+      throw new Error("Wallet client not found");
+    }
+    const userBetCredits = await getUserBetCredits(
+      walletClient.account.address
+    );
+    if (parseFloat(userBetCredits) < parseFloat(amount)) {
+      throw new Error("Insufficient bet credits");
+    }
+    console.log("Withdrawing bet credits with amount:", amount);
+    const provider = new ethers.BrowserProvider(walletClient);
+    const signer = await provider.getSigner();
+    const bettingContract = new ethers.Contract(
+      contractAddress,
+      BettingABI,
+      signer
+    );
+    const tx = await bettingContract.withdrawCredits(ethers.parseEther(amount));
+    const receipt = await tx.wait();
+    return receipt;
+  };
+
   return {
     createBet,
     joinBet,
     closeBet,
     withdraw,
     getAllBets,
+    registerTwitterHandle,
+    buyBetCredits,
+    getUserBetCredits,
+    getTwitterHandleAddress,
+    withdrawCredits,
   };
 };

@@ -471,7 +471,7 @@ export default function MarketplacePage() {
         // Get tokens that are open for sale (isOpen = true)
         const tokens = await getTokens({ isOpen: true });
 
-        console.log("Fetched tokens from blockchain:", tokens);
+        // console.log("Fetched tokens from blockchain:", tokens);
 
         // Convert the tokens to match the MemeToken interface
         const formattedTokens = tokens.map((token) => ({
