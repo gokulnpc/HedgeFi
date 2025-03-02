@@ -56,10 +56,12 @@ export default function BetsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <Button className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-400/90 hover:to-blue-500/90">
-                  <Rocket className="mr-2 h-4 w-4" />
-                  Create Prediction
-                </Button>
+                <Link href="/bets/create">
+                  <Button className="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-400/90 hover:to-blue-500/90">
+                    <Rocket className="mr-2 h-4 w-4" />
+                    Create Prediction
+                  </Button>
+                </Link>
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
                   <div className="text-sm">
                     <span className="text-gray-400">Total Volume:</span>{" "}

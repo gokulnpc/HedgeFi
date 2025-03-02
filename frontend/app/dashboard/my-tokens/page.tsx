@@ -62,7 +62,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTokenStore } from "../../store/tokenStore";
-import { getUserTokens } from "@/services/memecoin-launchpad";
+import { getTokens } from "@/services/memecoin-launchpad";
 
 export default function TokensPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,7 +84,7 @@ export default function TokensPage() {
     const fetchUserTokens = async () => {
       try {
         setIsLoading(true);
-        const tokens = await getUserTokens();
+        const tokens = await getTokens({ isCreator: true });
 
         // Convert blockchain tokens to match the expected format
         const formattedTokens = tokens.map((token) => ({

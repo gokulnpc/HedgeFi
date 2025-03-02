@@ -181,75 +181,37 @@ export async function buyToken(
 }
 
 /**
- * Fetch all tokens.
+ * Fetch tokens with flexible filtering options.
+ * @param options Optional filtering parameters
+ * @param options.isOpen Filter by token sale status (open or closed)
+ * @param options.isCreator Filter by tokens created by the current user
+ * @returns Array of filtered tokens
  */
-export async function getAllTokens(): Promise<Token[]> {
-  const { factory } = await loadFactoryContract();
-  const totalTokens = await factory.totalTokens();
-  const tokens: Token[] = [];
-
-  for (let i = 0; i < totalTokens; ++i) {
-    const tokenSale: TokenSale = await factory.getTokenSale(i);
-    const metadata = await fetchMetadata(tokenSale.metadataURI);
-
-    tokens.push({
-      token: tokenSale.token,
-      name: tokenSale.name,
-      creator: tokenSale.creator,
-      sold: tokenSale.sold,
-      raised: tokenSale.raised,
-      isOpen: tokenSale.isOpen,
-      image: metadata.imageURI,
-      description: metadata.description,
-    });
-  }
-
-  return tokens.reverse();
-}
-
-/**
- * Fetch tokens based on their state.
- */
-export async function getTokens(isOpen: boolean): Promise<Token[]> {
-  const { factory } = await loadFactoryContract();
-  const totalTokens = await factory.totalTokens();
-  const tokens: Token[] = [];
-
-  for (let i = 0; i < totalTokens; ++i) {
-    const tokenSale: TokenSale = await factory.getTokenSale(i);
-    if (tokenSale.isOpen === isOpen) {
-      const metadata = await fetchMetadata(tokenSale.metadataURI);
-
-      tokens.push({
-        token: tokenSale.token,
-        name: tokenSale.name,
-        creator: tokenSale.creator,
-        sold: tokenSale.sold,
-        raised: tokenSale.raised,
-        isOpen: tokenSale.isOpen,
-        image: metadata.imageURI,
-        description: metadata.description,
-      });
-    }
-  }
-
-  return tokens.reverse();
-}
-
-/**
- * Fetch tokens created by the current user.
- */
-export async function getUserTokens(): Promise<Token[]> {
+export async function getTokens(options?: {
+  isOpen?: boolean;
+  isCreator?: boolean;
+}): Promise<Token[]> {
   const { factory, signer } = await loadFactoryContract();
   const totalTokens = await factory.totalTokens();
   const tokens: Token[] = [];
-  const userAddress = await signer.getAddress();
+
+  // Get current user's address if we need to filter by creator
+  let creatorAddress: string | undefined;
+  if (options?.isCreator) {
+    creatorAddress = await signer.getAddress();
+  }
 
   for (let i = 0; i < totalTokens; ++i) {
     const tokenSale: TokenSale = await factory.getTokenSale(i);
 
-    // Check if the token was created by the current user
-    if (tokenSale.creator.toLowerCase() === userAddress.toLowerCase()) {
+    // Apply filters
+    const matchesOpenFilter =
+      options?.isOpen === undefined || tokenSale.isOpen === options.isOpen;
+    const matchesCreatorFilter =
+      !options?.isCreator ||
+      tokenSale.creator.toLowerCase() === creatorAddress?.toLowerCase();
+
+    if (matchesOpenFilter && matchesCreatorFilter) {
       const metadata = await fetchMetadata(tokenSale.metadataURI);
 
       tokens.push({
@@ -266,6 +228,22 @@ export async function getUserTokens(): Promise<Token[]> {
   }
 
   return tokens.reverse();
+}
+
+/**
+ * Helper function to get all tokens (no filters)
+ * @returns All tokens
+ */
+export async function getAllTokens(): Promise<Token[]> {
+  return getTokens();
+}
+
+/**
+ * Helper function to get tokens created by the current user
+ * @returns Tokens created by the current user
+ */
+export async function getUserTokens(): Promise<Token[]> {
+  return getTokens({ isCreator: true });
 }
 
 /**

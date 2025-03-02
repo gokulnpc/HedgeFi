@@ -39,7 +39,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTokenStore } from "../store/tokenStore";
 import { getTokens } from "@/services/memecoin-launchpad";
-import { length } from "assert";
 
 const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
 const DEFAULT_CHAIN_LOGO = "/chain-placeholder.svg";
@@ -255,37 +254,37 @@ const TokenCard = ({
       <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10">
         {/* Image Container */}
         <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
-          <div className="aspect-square relative overflow-hidden bg-gray-900">
-            {/* Use a div with background image as fallback for external images */}
+          <div className="aspect-square relative overflow-hidden flex justify-center items-center bg-gray-900">
+            {/* Background placeholder */}
             <div
               className="w-full h-full absolute inset-0"
               style={{
                 backgroundImage: `url(${DEFAULT_TOKEN_IMAGE})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
+                opacity: imageError ? 1 : 0.5,
               }}
             />
 
             {/* Next.js Image with error handling */}
             {!imageError && (
-              <div className="w-full h-full relative">
-                <Image
-                  src={
-                    token.imageUrl && token.imageUrl.startsWith("http")
-                      ? token.imageUrl
-                      : token.imageUrl || DEFAULT_TOKEN_IMAGE
-                  }
-                  alt={token.name}
-                  width={400}
-                  height={400}
-                  className="object-cover"
-                  priority={index < 4}
-                  onError={() => setImageError(true)}
-                  unoptimized={
-                    !!(token.imageUrl && token.imageUrl.startsWith("http"))
-                  }
-                />
-              </div>
+              <Image
+                src={
+                  token.imageUrl && token.imageUrl.startsWith("http")
+                    ? token.imageUrl
+                    : token.imageUrl || DEFAULT_TOKEN_IMAGE
+                }
+                alt={token.name}
+                width={400}
+                height={400}
+                className="object-cover w-full h-full absolute inset-0"
+                priority={index < 4}
+                onError={() => setImageError(true)}
+                unoptimized={
+                  !!(token.imageUrl && token.imageUrl.startsWith("http"))
+                }
+                style={{ maxWidth: "100%" }}
+              />
             )}
 
             {/* Network Badge */}
@@ -342,18 +341,20 @@ const TokenCard = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-medium text-white">
-                    {needsMarquee ? (
-                      <div className="w-[120px] overflow-hidden">
-                        <Marquee gradient={false} speed={20}>
-                          <span>{token.name}</span>
-                          <span className="mx-2">•</span>
-                        </Marquee>
-                      </div>
-                    ) : (
-                      token.name
-                    )}
-                  </h3>
+                  <Link href={`/token/${token.symbol.toLowerCase()}`}>
+                    <h3 className="text-sm font-medium text-white hover:text-blue-400 transition-colors">
+                      {needsMarquee ? (
+                        <div className="w-[120px] overflow-hidden">
+                          <Marquee gradient={false} speed={20}>
+                            <span>{token.name}</span>
+                            <span className="mx-2">•</span>
+                          </Marquee>
+                        </div>
+                      ) : (
+                        token.name
+                      )}
+                    </h3>
+                  </Link>
                   <Badge
                     variant="secondary"
                     className="h-5 px-1.5 text-[10px] font-mono"
@@ -423,6 +424,15 @@ const TokenCard = ({
               <span className="text-[10px] text-gray-500">Verified</span>
             </div>
           </div>
+
+          {/* Buy Button */}
+          <div className="mt-4">
+            <Link href={`/token/${token.symbol.toLowerCase()}`}>
+              <Button className="w-full" size="sm">
+                Buy {token.symbol}
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -448,7 +458,7 @@ export default function MarketplacePage() {
       try {
         setIsLoading(true);
         // Get tokens that are open for sale (isOpen = true)
-        const tokens = await getTokens(true);
+        const tokens = await getTokens({ isOpen: true });
 
         // Convert the tokens to match the MemeToken interface
         const formattedTokens = tokens.map((token) => ({
