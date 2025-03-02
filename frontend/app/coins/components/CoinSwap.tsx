@@ -45,8 +45,8 @@ import {
   getEstimatedEthForTokens,
   getTokenBalance,
   getEthBalance,
-  swapCoinforToken,
-  swapTokenforCoin,
+  swapEthForToken,
+  swapTokenForEth,
 } from "@/services/memecoin-launchpad";
 import { ethers } from "ethers";
 
@@ -502,7 +502,7 @@ const CoinSwap = ({
         };
 
         // Call the swap function
-        result = await swapCoinforToken(tokenSale, amount);
+        result = await swapEthForToken(tokenSale, amount);
       } else if (swapDirection === "tokenToEth" && fromToken.tokenData) {
         // Token to ETH swap
         const tokenSale = {
@@ -516,7 +516,7 @@ const CoinSwap = ({
         };
 
         // Call the swap function
-        result = await swapTokenforCoin(tokenSale, amount);
+        result = await swapTokenForEth(tokenSale, amount);
       } else {
         alert("Invalid swap configuration");
         return;

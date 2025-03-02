@@ -71,16 +71,20 @@ async function loadFactoryContract(): Promise<ContractObjects> {
 /**
  * Swap ETH for tokens.
  */
-export async function swapCoinforToken(
+export async function swapEthForToken(
   token: TokenSale,
   amount: bigint
 ): Promise<{ success: boolean }> {
   try {
     const { signer, liquidityPool } = await loadFactoryContract();
+    const ethAmountEthers = ethers.parseUnits(amount.toString(), 18);
+    if (token.isOpen === true) {
+      return { success: false };
+    }
 
     const transaction = await liquidityPool
       .connect(signer)
-      .swapEthForToken(token.token, { value: amount });
+      .swapEthForToken(token.token, { value: ethAmountEthers });
 
     const receipt = await transaction.wait();
     return { success: receipt.status === 1 };
@@ -93,16 +97,20 @@ export async function swapCoinforToken(
 /**
  * Swap tokens for ETH.
  */
-export async function swapTokenforCoin(
+export async function swapTokenForEth(
   tokenSale: TokenSale,
   tokenAmount: bigint
 ): Promise<{ success: boolean }> {
   try {
     const { signer, liquidityPool } = await loadFactoryContract();
+    const tokenAmountEthers = ethers.parseUnits(tokenAmount.toString(), 18);
+    if (tokenSale.isOpen === true) {
+      return { success: false };
+    }
 
     const transaction = await liquidityPool
       .connect(signer)
-      .swapTokenForEth(tokenSale.token, tokenAmount);
+      .swapTokenForEth(tokenSale.token, tokenAmountEthers);
 
     const receipt = await transaction.wait();
     return { success: receipt.status === 1 };
