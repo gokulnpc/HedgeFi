@@ -268,11 +268,11 @@ async function fetchMetadata(
   }
 }
 
-
-
 export async function getPriceForTokens(tokenSale: TokenSale,amount: bigint){
   const CAP_AMOUNT = ethers.parseUnits("10000", 18);
   const amountEthers = ethers.parseUnits(amount.toString(), 18);
+  console.log("CAP_AMOUNT: ", CAP_AMOUNT);
+  console.log("amountEthers: ", amountEthers);
   if (tokenSale.isOpen === false || amountEthers > CAP_AMOUNT){
     return 0;
   }
