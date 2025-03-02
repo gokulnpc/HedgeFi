@@ -66,7 +66,7 @@ export function BetSection({
 
       {currentBets.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-fr">
             {currentBets.map((bet) => {
               // Log each bet to help with debugging
               console.log(`Rendering bet: ${bet.id} - ${bet.title}`);
@@ -77,6 +77,7 @@ export function BetSection({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
+                    className="h-full"
                   >
                     <BetCard bet={bet} />
                   </motion.div>

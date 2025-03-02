@@ -39,12 +39,16 @@ export function BetCard({ bet }: { bet: Bet }) {
       : (bet.totalPool / bet.noPool).toFixed(2);
 
   return (
-    <motion.div whileHover={{ y: -5 }} className="group">
-      <Card className="overflow-hidden border-white/10 bg-black">
+    <motion.div whileHover={{ y: -5 }} className="group h-full">
+      <Card className="overflow-hidden border-white/10 bg-black flex flex-col h-full">
         {/* Image */}
-        <div className="relative h-48">
-          {/* <Image
-            src={bet.image || "/placeholder.svg"}
+        <div className="relative h-48 flex-shrink-0">
+          <Image
+            src={
+              bet.image && bet.image.startsWith("http")
+                ? bet.image
+                : "/placeholder.svg"
+            }
             alt={bet.title}
             fill
             className="object-cover"
@@ -53,7 +57,7 @@ export function BetCard({ bet }: { bet: Bet }) {
               // Set fallback image
               e.currentTarget.src = "/placeholder.svg";
             }}
-          /> */}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
           <div className="absolute top-4 left-4">
             <Badge
@@ -81,10 +85,12 @@ export function BetCard({ bet }: { bet: Bet }) {
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">{bet.title}</h3>
+        <div className="p-6 flex flex-col flex-grow">
+          <h3 className="text-lg font-semibold text-white mb-4 h-14 line-clamp-2 overflow-hidden">
+            {bet.title}
+          </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-4 flex-grow flex flex-col justify-between">
             {/* Pool Distribution */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
@@ -150,41 +156,71 @@ export function BetCard({ bet }: { bet: Bet }) {
             </div>
 
             {/* Actions or Results */}
-            {bet.isResolved ? (
-              <div className="space-y-3">
-                {/* Result Banner */}
-                <div
-                  className={cn(
-                    "flex items-center gap-2 p-3 rounded-lg border",
-                    bet.result === "yes"
-                      ? "bg-green-500/10 border-green-500/20 text-green-500"
-                      : "bg-red-500/10 border-red-500/20 text-red-500"
-                  )}
-                >
-                  <Trophy className="h-5 w-5" />
-                  <div className="flex-1">
-                    <span className="font-medium">
-                      {bet.result === "yes" ? "Yes" : "No"} was correct
-                    </span>
-                    <div className="text-sm opacity-90">
-                      {bet.result === "yes"
-                        ? `${(bet.yesProbability * 100).toFixed(
-                            0
-                          )}% predicted correctly`
-                        : `${(bet.noProbability * 100).toFixed(
-                            0
-                          )}% predicted correctly`}
-                      {" • "}
-                      {Number(winningPayout)}x payout
+            <div className="mt-auto">
+              {bet.isResolved ? (
+                <div className="space-y-3">
+                  {/* Result Banner */}
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border",
+                      bet.result === "yes"
+                        ? "bg-green-500/10 border-green-500/20 text-green-500"
+                        : "bg-red-500/10 border-red-500/20 text-red-500"
+                    )}
+                  >
+                    <Trophy className="h-5 w-5" />
+                    <div className="flex-1">
+                      <span className="font-medium">
+                        {bet.result === "yes" ? "Yes" : "No"} was correct
+                      </span>
+                      <div className="text-sm opacity-90">
+                        {bet.result === "yes"
+                          ? `${(bet.yesProbability * 100).toFixed(
+                              0
+                            )}% predicted correctly`
+                          : `${(bet.noProbability * 100).toFixed(
+                              0
+                            )}% predicted correctly`}
+                        {" • "}
+                        {Number(winningPayout)}x payout
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Share Results */}
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" className="flex-1 border-white/10">
-                    View Details
-                  </Button>
+                  {/* Share Results */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-white/10"
+                    >
+                      View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="border-white/10"
+                    >
+                      <Twitter className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="border-white/10"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 pt-2">
+                  <Link
+                    href={`/bets/place-bet?id=${bet.id}`}
+                    className="flex-1"
+                  >
+                    <Button className="w-full bg-gradient-to-r from-sky-400 to-blue-500">
+                      Place Bet
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     size="icon"
@@ -200,30 +236,8 @@ export function BetCard({ bet }: { bet: Bet }) {
                     <Share2 className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 pt-2">
-                <Link href={`/bets/place-bet?id=${bet.id}`} className="flex-1">
-                  <Button className="w-full bg-gradient-to-r from-sky-400 to-blue-500">
-                    Place Bet
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="border-white/10"
-                >
-                  <Twitter className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="border-white/10"
-                >
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </Card>

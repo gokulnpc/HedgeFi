@@ -56,10 +56,19 @@ export const useBettingService = () => {
     return receipt;
   };
 
-  const joinBet = async (betId: number, support: boolean) => {
+  const joinBet = async (
+    betId: number,
+    support: boolean,
+    betAmount: string = "1.0"
+  ) => {
     if (!walletClient) {
       throw new Error("Wallet client not found");
     }
+    console.log("Joining bet with parameters:", {
+      betId,
+      support,
+      betAmount,
+    });
     const provider = new ethers.BrowserProvider(walletClient);
     const signer = await provider.getSigner();
     const bettingContract = new ethers.Contract(
@@ -67,8 +76,13 @@ export const useBettingService = () => {
       BettingABI,
       signer
     );
+    const estimatedGas = await bettingContract.joinBet(betId, support, {
+      value: ethers.parseEther(betAmount), // Use the provided bet amount
+      gasLimit: 10000000,
+    });
     const tx = await bettingContract.joinBet(betId, support, {
-      value: ethers.parseEther("1.0"), // Assuming 1 ETH as the bet amount
+      value: ethers.parseEther(betAmount), // Use the provided bet amount
+      gasLimit: estimatedGas.gasLimit,
     });
     const receipt = await tx.wait();
     return receipt;
