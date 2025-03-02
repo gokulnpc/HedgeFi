@@ -42,6 +42,8 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { toast, useToast } from "@/hooks/use-toast";
+import { NewsTickerWidget } from "./NewsTickerWidget";
+import { ThinkingDots } from "@/components/ui/thinking-dots";
 
 // Map of icon components
 const icons = {
@@ -416,6 +418,24 @@ function AIChatbotContent() {
     });
   };
 
+  const renderMessageContent = (message: ContentWithUser) => {
+    console.log("Rendering message:", message);
+    if (message.data) {
+      return (
+        <div className="w-full">
+          <NewsTickerWidget news={message.data.articles} />
+        </div>
+      );
+    }
+    console.log("IM here?", message);
+    return (
+      <p className="whitespace-pre-wrap font-clean">
+        {message.text}
+        {message.isLoading && <ThinkingDots />}
+      </p>
+    );
+  };
+
   return (
     <div className="ml-10 mr-10 mx-auto flex flex-col h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)] pt-12">
       {/* Welcome Section */}
@@ -480,8 +500,7 @@ function AIChatbotContent() {
         className="flex-1 p-4 mt-2 space-y-4 overflow-y-auto"
       >
         {messages.map((message, index) => {
-          const isBot = message.user === "Sage";
-          console.log("message,", message.text, message.user);
+          const isBot = message.user === "Sage" || message.data;
           return (
             <motion.div
               key={index}
@@ -545,70 +564,14 @@ function AIChatbotContent() {
                       message.isLoading ? (
                         <ThinkingMessage />
                       ) : (
-                        <ReactMarkdown
-                          components={{
-                            p: ({ node, ...props }) => (
-                              <p
-                                className="text-sm whitespace-pre-wrap"
-                                {...props}
-                              />
-                            ),
-                            strong: ({ node, ...props }) => (
-                              <strong className="font-bold" {...props} />
-                            ),
-                            em: ({ node, ...props }) => (
-                              <em className="italic" {...props} />
-                            ),
-                            ol: ({ node, ...props }) => (
-                              <ol
-                                className="pl-6 my-2 list-decimal"
-                                {...props}
-                              />
-                            ),
-                            ul: ({ node, ...props }) => (
-                              <ul className="pl-6 my-2 list-disc" {...props} />
-                            ),
-                            li: ({ node, ...props }) => (
-                              <li className="my-1" {...props} />
-                            ),
-                            h1: ({ node, ...props }) => (
-                              <h1
-                                className="my-3 text-xl font-bold"
-                                {...props}
-                              />
-                            ),
-                            h2: ({ node, ...props }) => (
-                              <h2
-                                className="my-2 text-lg font-bold"
-                                {...props}
-                              />
-                            ),
-                            h3: ({ node, ...props }) => (
-                              <h3
-                                className="my-2 text-base font-bold"
-                                {...props}
-                              />
-                            ),
-                            code: ({ node, ...props }) => (
-                              <code
-                                className="bg-gray-800 px-1 py-0.5 rounded text-xs"
-                                {...props}
-                              />
-                            ),
-                            blockquote: ({ node, ...props }) => (
-                              <blockquote
-                                className="pl-4 my-2 italic border-l-2 border-gray-500"
-                                {...props}
-                              />
-                            ),
-                          }}
-                        >
-                          {message.text}
-                        </ReactMarkdown>
+                        <div className="text-sm whitespace-pre-wrap">
+                        {renderMessageContent(message)}
+                      </div>
+            
                       )
                     ) : (
                       <div className="text-sm whitespace-pre-wrap">
-                        {message.text}
+                        {renderMessageContent(message)}
                       </div>
                     )}
                     {message.attachments && message.attachments.length > 0 && (
