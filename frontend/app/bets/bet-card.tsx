@@ -43,12 +43,17 @@ export function BetCard({ bet }: { bet: Bet }) {
       <Card className="overflow-hidden border-white/10 bg-black">
         {/* Image */}
         <div className="relative h-48">
-          <Image
+          {/* <Image
             src={bet.image || "/placeholder.svg"}
             alt={bet.title}
             fill
             className="object-cover"
-          />
+            onError={(e) => {
+              console.error(`Error loading image for bet ${bet.id}:`, e);
+              // Set fallback image
+              e.currentTarget.src = "/placeholder.svg";
+            }}
+          /> */}
           <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
           <div className="absolute top-4 left-4">
             <Badge
