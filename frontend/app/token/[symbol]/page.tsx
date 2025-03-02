@@ -31,9 +31,11 @@ import {
   Rocket,
   BarChart3,
   AlertCircle,
-  Settings2,
-  Power,
+  ArrowLeft,
+  Share2,
+  Star,
 } from "lucide-react";
+import GridBackground from "@/app/components/GridBackground";
 
 const DEFAULT_TOKEN_IMAGE = "/placeholder.svg";
 
@@ -46,6 +48,7 @@ export default function TokenDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [buyAmount, setBuyAmount] = useState("1");
   const [isBuying, setIsBuying] = useState(false);
+  const [isStarred, setIsStarred] = useState(false);
 
   // Fetch token details
   useEffect(() => {
@@ -153,9 +156,42 @@ export default function TokenDetailPage() {
     });
   };
 
+  // Handle share
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator
+        .share({
+          title: `${token?.name} (${token?.symbol})`,
+          text: `Check out ${token?.name} on HedgeFi!`,
+          url: window.location.href,
+        })
+        .catch((err) => {
+          console.error("Error sharing:", err);
+        });
+    } else {
+      copyToClipboard(window.location.href);
+      toast({
+        title: "Link Copied",
+        description: "Token link copied to clipboard for sharing",
+      });
+    }
+  };
+
+  // Toggle star/favorite
+  const toggleStar = () => {
+    setIsStarred(!isStarred);
+    toast({
+      title: isStarred ? "Removed from Watchlist" : "Added to Watchlist",
+      description: isStarred
+        ? `${token?.symbol} has been removed from your watchlist`
+        : `${token?.symbol} has been added to your watchlist`,
+    });
+  };
+
   if (isLoading) {
     return (
       <AppLayout>
+        <GridBackground />
         <div className="container py-12">
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <div className="w-16 h-16 border-4 border-t-blue-500 border-b-blue-500 border-l-transparent border-r-transparent rounded-full animate-spin"></div>
@@ -171,6 +207,7 @@ export default function TokenDetailPage() {
   if (!token) {
     return (
       <AppLayout>
+        <GridBackground />
         <div className="container py-12">
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <AlertCircle className="w-16 h-16 text-red-500" />
@@ -189,45 +226,36 @@ export default function TokenDetailPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-[#141414] text-white pb-12">
+      <GridBackground />
+      <div className="pb-12">
         <div className="container max-w-7xl mx-auto px-4 pt-6">
-          {/* Cat Mascot */}
-          <div className="relative">
-            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-32 h-32 z-10">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202025-02-28%20at%2000.31.26-W4ED3LHCyVcxQbYIhgztjbnxRkOegQ.png"
-                alt="Cute cat mascot"
-                width={128}
-                height={128}
-                className="w-full h-full object-contain"
-              />
-            </div>
-          </div>
-
-          {/* Header with Settings */}
-          <div className="flex items-center justify-between mb-8 pt-4">
+          {/* Header with Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pt-4">
             <Link href="/marketplace">
-              <Button
-                variant="ghost"
-                className="text-white/70 hover:text-white"
-              >
-                ← Back
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Marketplace
               </Button>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Button
-                variant="ghost"
-                size="icon"
-                className="text-white/70 hover:text-white"
+                variant="outline"
+                size="sm"
+                onClick={toggleStar}
+                className={
+                  isStarred
+                    ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                    : ""
+                }
               >
-                <Settings2 className="h-6 w-6" />
+                <Star
+                  className={`mr-2 h-4 w-4 ${isStarred ? "fill-blue-500" : ""}`}
+                />
+                {isStarred ? "Watchlisted" : "Add to Watchlist"}
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white/70 hover:text-white"
-              >
-                <Power className="h-6 w-6" />
+              <Button variant="outline" size="sm" onClick={handleShare}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share
               </Button>
             </div>
           </div>
@@ -239,12 +267,13 @@ export default function TokenDetailPage() {
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
             {/* Left Column */}
-            <div className="lg:col-span-2">
-              <Card className="bg-[#1c1c1e] border-none rounded-3xl overflow-hidden">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Token Overview Card */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* Token Image */}
-                    <div className="w-full md:w-48 h-48 relative rounded-2xl overflow-hidden">
+                    <div className="w-full md:w-48 h-48 relative rounded-lg overflow-hidden flex-shrink-0">
                       <Image
                         src={token?.imageUrl || DEFAULT_TOKEN_IMAGE}
                         alt={token?.name || "Token"}
@@ -257,16 +286,18 @@ export default function TokenDetailPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-4">
                         <h1 className="text-3xl font-bold">{token?.name}</h1>
-                        <Badge className="bg-[#FFB800] text-black font-semibold">
+                        <Badge className="bg-gradient-to-r from-sky-400 to-blue-500 text-white font-semibold">
                           ${token?.symbol}
                         </Badge>
                       </div>
 
-                      <p className="text-white/60 mb-6">{token?.description}</p>
+                      <p className="text-muted-foreground mb-6 line-clamp-3">
+                        {token?.description}
+                      </p>
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-black/20 rounded-xl p-4">
-                          <div className="text-white/60 text-sm mb-1">
+                        <div className="bg-black/20 rounded-lg p-4">
+                          <div className="text-muted-foreground text-sm mb-1">
                             Price
                           </div>
                           <div className="text-xl font-semibold">
@@ -289,8 +320,8 @@ export default function TokenDetailPage() {
                           </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-xl p-4">
-                          <div className="text-white/60 text-sm mb-1">
+                        <div className="bg-black/20 rounded-lg p-4">
+                          <div className="text-muted-foreground text-sm mb-1">
                             Market Cap
                           </div>
                           <div className="text-xl font-semibold">
@@ -298,8 +329,8 @@ export default function TokenDetailPage() {
                           </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-xl p-4">
-                          <div className="text-white/60 text-sm mb-1">
+                        <div className="bg-black/20 rounded-lg p-4">
+                          <div className="text-muted-foreground text-sm mb-1">
                             Volume 24h
                           </div>
                           <div className="text-xl font-semibold">
@@ -307,8 +338,8 @@ export default function TokenDetailPage() {
                           </div>
                         </div>
 
-                        <div className="bg-black/20 rounded-xl p-4">
-                          <div className="text-white/60 text-sm mb-1">
+                        <div className="bg-black/20 rounded-lg p-4">
+                          <div className="text-muted-foreground text-sm mb-1">
                             Holders
                           </div>
                           <div className="text-xl font-semibold">
@@ -321,16 +352,138 @@ export default function TokenDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Buy Card */}
-              <Card className="bg-[#1c1c1e] border-none rounded-3xl overflow-hidden mt-6">
-                <CardContent className="p-6">
-                  <h2 className="text-xl font-bold mb-6">
-                    Buy {token?.symbol}
-                  </h2>
+              {/* Description Card */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle>About {token?.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">
+                      {token?.description ||
+                        "No description available for this token."}
+                    </p>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div className="bg-black/20 p-4 rounded-lg">
+                        <h3 className="text-sm font-medium mb-2">
+                          Token Utility
+                        </h3>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          <li>Governance voting rights</li>
+                          <li>Platform fee discounts</li>
+                          <li>Access to premium features</li>
+                          <li>Staking rewards</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-black/20 p-4 rounded-lg">
+                        <h3 className="text-sm font-medium mb-2">Tokenomics</h3>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                          <li>Total Supply: 1,000,000,000</li>
+                          <li>Circulating Supply: 250,000,000</li>
+                          <li>Initial Distribution: 25%</li>
+                          <li>Team Allocation: 15% (locked)</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Price Chart Card */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Price History</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                      >
+                        1D
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs bg-blue-500/10 text-blue-500 border-blue-500/20"
+                      >
+                        1W
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                      >
+                        1M
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                      >
+                        1Y
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="aspect-[16/9] bg-black/20 rounded-lg flex flex-col items-center justify-center p-6">
+                    <BarChart3 className="h-16 w-16 text-white/20 mb-4" />
+                    <p className="text-muted-foreground text-center">
+                      Price chart data will be available once there is
+                      sufficient trading activity.
+                    </p>
+                    <p className="text-sm text-muted-foreground text-center mt-2">
+                      Be one of the first to trade this token!
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div className="bg-black/20 p-3 rounded-lg">
+                      <div className="text-xs text-muted-foreground">
+                        All-time high
+                      </div>
+                      <div className="font-medium">$0.000045</div>
+                      <div className="text-xs text-green-400">
+                        +36.36% from current
+                      </div>
+                    </div>
+                    <div className="bg-black/20 p-3 rounded-lg">
+                      <div className="text-xs text-muted-foreground">
+                        All-time low
+                      </div>
+                      <div className="font-medium">$0.000021</div>
+                      <div className="text-xs text-red-400">
+                        -36.36% from current
+                      </div>
+                    </div>
+                    <div className="bg-black/20 p-3 rounded-lg">
+                      <div className="text-xs text-muted-foreground">
+                        30d change
+                      </div>
+                      <div className="font-medium flex items-center">
+                        <TrendingDown className="h-3 w-3 text-red-400 mr-1" />
+                        -9.65%
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Buy Card */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle>Buy {token?.symbol}</CardTitle>
+                  <CardDescription>
+                    Purchase tokens directly with ETH
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
-                      <label className="text-white/60 text-sm block mb-2">
+                      <label className="text-muted-foreground text-sm block mb-2">
                         Amount
                       </label>
                       <Input
@@ -338,14 +491,14 @@ export default function TokenDetailPage() {
                         value={buyAmount}
                         onChange={(e) => setBuyAmount(e.target.value)}
                         min="1"
-                        className="bg-black border-white/10 h-14 rounded-xl text-lg"
+                        className="bg-black/30 border-white/10 h-12 rounded-lg text-lg"
                       />
                     </div>
                     <div>
-                      <label className="text-white/60 text-sm block mb-2">
+                      <label className="text-muted-foreground text-sm block mb-2">
                         Total Cost
                       </label>
-                      <div className="bg-black border border-white/10 h-14 rounded-xl flex items-center px-4 text-lg font-mono">
+                      <div className="bg-black/30 border border-white/10 h-12 rounded-lg flex items-center px-4 text-lg font-mono">
                         {(
                           Number.parseFloat(buyAmount) *
                           Number.parseFloat(token?.baseCost || "0")
@@ -356,7 +509,7 @@ export default function TokenDetailPage() {
                   </div>
 
                   <Button
-                    className="w-full h-14 text-lg font-semibold bg-[#FFB800] hover:bg-[#FFA500] text-black rounded-xl"
+                    className="w-full h-12 text-base font-semibold bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white rounded-lg"
                     onClick={handleBuyToken}
                     disabled={
                       isBuying ||
@@ -377,18 +530,31 @@ export default function TokenDetailPage() {
                     )}
                   </Button>
                 </CardContent>
+                <CardFooter className="bg-black/20 px-6 py-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>
+                      Base cost: {token?.baseCost} ETH per token. Gas fees may
+                      apply.
+                    </span>
+                  </div>
+                </CardFooter>
               </Card>
             </div>
 
             {/* Right Column */}
-            <div>
-              <Card className="bg-[#1c1c1e] border-none rounded-3xl overflow-hidden">
-                <CardContent className="p-6">
-                  <h2 className="text-xl font-bold mb-6">Token Information</h2>
-
+            <div className="space-y-6">
+              {/* Token Information Card */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle>Token Information</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between py-3 border-b border-white/10">
-                      <span className="text-white/60">Contract Address</span>
+                      <span className="text-muted-foreground">
+                        Contract Address
+                      </span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm">
                           {formatAddress(token?.id)}
@@ -405,19 +571,35 @@ export default function TokenDetailPage() {
                     </div>
 
                     <div className="flex justify-between py-3 border-b border-white/10">
-                      <span className="text-white/60">Network</span>
+                      <span className="text-muted-foreground">Network</span>
                       <Badge variant="outline" className="bg-white/5">
                         {token?.chain}
                       </Badge>
                     </div>
 
                     <div className="flex justify-between py-3 border-b border-white/10">
-                      <span className="text-white/60">Launch Date</span>
+                      <span className="text-muted-foreground">Launch Date</span>
                       <span>{token?.launchDate}</span>
                     </div>
 
+                    <div className="flex justify-between py-3 border-b border-white/10">
+                      <span className="text-muted-foreground">Creator</span>
+                      <span className="font-mono text-sm">
+                        {formatAddress(token?.creator)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between py-3 border-b border-white/10">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                        Active
+                      </Badge>
+                    </div>
+
                     <div className="flex justify-between py-3">
-                      <span className="text-white/60">Social Links</span>
+                      <span className="text-muted-foreground">
+                        Social Links
+                      </span>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Globe className="h-4 w-4" />
@@ -434,11 +616,86 @@ export default function TokenDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Chart Placeholder */}
-              <Card className="bg-[#1c1c1e] border-none rounded-3xl overflow-hidden mt-6">
-                <CardContent className="p-6">
-                  <div className="aspect-video bg-black/20 rounded-xl flex items-center justify-center">
-                    <BarChart3 className="h-12 w-12 text-white/20" />
+              {/* Recent Transactions */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle>Recent Transactions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Empty state for now */}
+                    <div className="text-center py-6">
+                      <div className="bg-black/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <AlertCircle className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium mb-1">
+                        No transactions yet
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Be the first to trade this token
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Market Activity */}
+              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                <CardHeader>
+                  <CardTitle>Market Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="bg-black/20 p-4 rounded-lg">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">
+                          Trading Volume (24h)
+                        </span>
+                        <span className="text-sm font-medium">
+                          {token?.volume24h}
+                        </span>
+                      </div>
+                      <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-sky-400 to-blue-500 h-full rounded-full"
+                          style={{ width: "35%" }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-black/20 p-4 rounded-lg">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">
+                          Liquidity
+                        </span>
+                        <span className="text-sm font-medium">$45,678.90</span>
+                      </div>
+                      <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-sky-400 to-blue-500 h-full rounded-full"
+                          style={{ width: "62%" }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-black/20 p-4 rounded-lg">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm text-muted-foreground">
+                          Buy/Sell Ratio
+                        </span>
+                        <span className="text-sm font-medium">68% / 32%</span>
+                      </div>
+                      <div className="flex h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-green-500 h-full"
+                          style={{ width: "68%" }}
+                        ></div>
+                        <div
+                          className="bg-red-500 h-full"
+                          style={{ width: "32%" }}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
