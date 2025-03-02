@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createToken } from "@/services/memecoin-launchpad";
 
 interface TokenDetails {
   name: string;
@@ -116,56 +117,33 @@ export default function LaunchPage() {
   };
 
   const handleSubmit = async (data: Record<string, string>) => {
+    console.log("Submitting data:", data); // Debug log
+    console.log("Image file:", imageFile); 
+    // ========= Thong added this ================
     try {
-      if (!imageFile && !aiImageUrl) {
+      if (!imageFile) {
         setError("Please upload an image or generate one using AI");
         return;
       }
-
+      
       setIsLoading(true);
       let imageUrl = "";
 
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append("file", imageFile);
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (!response.ok) throw new Error("Failed to upload image");
-        const result = await response.json();
-        imageUrl = result.url;
-        console.log("Uploaded image URL:", imageUrl); // Debug log
-      } else if (aiImageUrl) {
-        imageUrl = aiImageUrl;
-        console.log("AI image URL:", imageUrl); // Debug log
+      const metaData = {
+        name: data.name.trim(),
+        ticker: data.symbol.trim(),
+        description: data.description || ""
+      };
+      const result = await createToken(metaData, imageFile);
+
+      if (!result.success) {
+        setError("Failed to create token");
       }
-
-      if (!imageUrl) {
-        throw new Error("Failed to process image");
-      }
-
-      // For development, if the API call would fail, use a local placeholder
-      if (!imageUrl.startsWith("http") && !imageUrl.startsWith("/")) {
-        imageUrl = "/placeholder.svg";
-      }
-
-      const response = await fetch("/api/create-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...data,
-          imageUrl,
-        }),
-      });
-
-      const tokenData = await response.json();
+  
 
       // Create a new token object
       const newToken: Token = {
-        id: tokenData.id || Date.now().toString(),
+        id: result.imageURL?.split("ipfs/")[1] || Date.now().toString(),
         name: data.name,
         symbol: data.symbol,
         imageUrl, // Ensure imageUrl is set
@@ -176,7 +154,7 @@ export default function LaunchPage() {
         holders: "0",
         volume24h: "$0",
         launchDate: new Date().toISOString().split("T")[0],
-        chain: data.chain || "ETH",
+        chain: data.chain || "NEAR",
         status: "active",
         fundingRaised: "0",
       };
@@ -187,6 +165,8 @@ export default function LaunchPage() {
       addToken(newToken);
       setCreatedToken(newToken);
       setShowSuccessDialog(true);
+      return result.success;
+
     } catch (error) {
       console.error("Error creating token:", error);
       setError("Failed to create token. Please try again.");

@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { motion } from "framer-motion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { createToken } from "@/services/memecoin-launchpad"
 
 const tokenInfoFields = [
   {
@@ -218,6 +219,62 @@ export function TokenFormSection({
       </Card>
     </div>
   )
+
+  // Add this function inside the TokenFormSection component
+const validateAndSubmitForm = async () => {
+  const form = document.querySelector("form") as HTMLFormElement;
+  
+  // Validate token info
+  const nameInput = form.querySelector('input[name="name"]') as HTMLInputElement;
+  const symbolInput = form.querySelector('input[name="symbol"]') as HTMLInputElement;
+  const descriptionInput = form.querySelector('input[name="description"]') as HTMLInputElement;
+  
+  // Check required fields
+  if (!nameInput?.value.trim()) {
+    onSubmit({ error: "Token name is required" });
+    return false;
+  }
+  
+  if (!symbolInput?.value.trim()) {
+    onSubmit({ error: "Token symbol is required" });
+    return false;
+  }
+  
+  // Validate image exists
+  if (!imageFile) {
+    onSubmit({ error: "Token image is required" });
+    return false;
+  }
+  
+  
+  // All validations passed, show confirmation dialog
+  if (window.confirm(`Are you sure you want to create ${nameInput.value} (${symbolInput.value}) token?`)) {
+    try{
+      // Prepare metadata
+      const metaData = {
+        name: nameInput.value,
+        ticker: symbolInput.value,
+        description: descriptionInput?.value || ""
+      };
+      
+      const result = await createToken(metaData, imageFile);
+
+      if (result.success) {
+        alert("Token created successfully!");
+      } else {
+        onSubmit({ error: result.error?.message || "Failed to create token" });
+      }
+      
+      return result.success;
+    } catch (error) {
+      console.error("Error creating token:", error);
+      onSubmit({ error: "An unexpected error occurred" });
+      return false;
+    }
+  }
+  
+  return false;
+};
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
