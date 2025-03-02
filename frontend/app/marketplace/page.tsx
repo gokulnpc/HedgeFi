@@ -249,15 +249,15 @@ const TokenCard = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       whileHover={{ y: -5 }}
-      className="group w-full"
+      className="w-full group"
     >
-      <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10">
+      <div className="relative overflow-hidden bg-black border rounded-2xl border-white/10">
         {/* Image Container */}
         <Link href={`/token/${token.symbol.toLowerCase()}`} className="block">
-          <div className="aspect-square relative overflow-hidden flex justify-center items-center bg-gray-900">
+          <div className="relative flex items-center justify-center overflow-hidden bg-gray-900 aspect-square">
             {/* Background placeholder */}
             <div
-              className="w-full h-full absolute inset-0"
+              className="absolute inset-0 w-full h-full"
               style={{
                 backgroundImage: `url(${DEFAULT_TOKEN_IMAGE})`,
                 backgroundSize: "cover",
@@ -277,7 +277,7 @@ const TokenCard = ({
                 alt={token.name}
                 width={400}
                 height={400}
-                className="object-cover w-full h-full absolute inset-0"
+                className="absolute inset-0 object-cover w-full h-full"
                 priority={index < 4}
                 onError={() => setImageError(true)}
                 unoptimized={
@@ -288,7 +288,7 @@ const TokenCard = ({
             )}
 
             {/* Network Badge */}
-            <div className="absolute top-4 left-4 z-20">
+            <div className="absolute z-20 top-4 left-4">
               <div className="flex items-center gap-1.5 bg-black/90 rounded-full px-2.5 py-1 border border-white/10">
                 {chains.map(
                   (chain) =>
@@ -314,7 +314,7 @@ const TokenCard = ({
             </div>
 
             {/* Price Change Badge */}
-            <div className="absolute top-4 right-4 z-20">
+            <div className="absolute z-20 top-4 right-4">
               <div className="bg-black/90 rounded-lg px-2.5 py-1 border border-white/10">
                 <div className="flex items-center gap-1">
                   {token.priceChange > 0 ? (
@@ -342,7 +342,7 @@ const TokenCard = ({
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5">
                   <Link href={`/token/${token.symbol.toLowerCase()}`}>
-                    <h3 className="text-sm font-medium text-white hover:text-blue-400 transition-colors">
+                    <h3 className="text-sm font-medium text-white transition-colors hover:text-blue-400">
                       {needsMarquee ? (
                         <div className="w-[120px] overflow-hidden">
                           <Marquee gradient={false} speed={20}>
@@ -378,7 +378,7 @@ const TokenCard = ({
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-medium font-mono text-white">
+              <div className="font-mono text-sm font-medium text-white">
                 ${token.price}
               </div>
               <div className="text-[10px] text-gray-500">
@@ -392,16 +392,16 @@ const TokenCard = ({
           </p>
 
           {/* Token Metrics */}
-          <div className="grid grid-cols-2 gap-4 mt-3 py-3 border-y border-white/10">
+          <div className="grid grid-cols-2 gap-4 py-3 mt-3 border-y border-white/10">
             <div>
               <div className="text-[10px] text-gray-500 mb-0.5">Volume 24h</div>
-              <div className="text-sm font-medium font-mono text-white">
+              <div className="font-mono text-sm font-medium text-white">
                 {token.volume24h}
               </div>
             </div>
             <div>
               <div className="text-[10px] text-gray-500 mb-0.5">Holders</div>
-              <div className="text-sm font-medium font-mono text-white">
+              <div className="font-mono text-sm font-medium text-white">
                 {token.holders}
               </div>
             </div>
@@ -586,7 +586,7 @@ export default function MarketplacePage() {
           transition={{ duration: 0.5 }}
           className="container py-8"
         >
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex flex-col items-start justify-between gap-4 mb-8 md:flex-row md:items-center">
             <div>
               <h1 className="text-4xl font-bold">
                 Meme Token{" "}
@@ -594,7 +594,7 @@ export default function MarketplacePage() {
                   Marketplace
                 </span>
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="mt-2 text-muted-foreground">
                 Discover and invest in the latest meme tokens
               </p>
             </div>
@@ -610,15 +610,15 @@ export default function MarketplacePage() {
                 />
               </div>
               <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
+                <Filter className="w-4 h-4" />
               </Button>
               <Button variant="outline" size="icon">
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="flex flex-col gap-4 mb-8 sm:flex-row">
             <MarketFilters
               chains={chains}
               filterOptions={filterOptions}
@@ -629,7 +629,7 @@ export default function MarketplacePage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {isLoading ? (
               // Show loading state
               Array(8)
@@ -637,14 +637,14 @@ export default function MarketplacePage() {
                 .map((_, index) => (
                   <div
                     key={index}
-                    className="bg-black/60 rounded-2xl overflow-hidden border border-white/10 animate-pulse"
+                    className="overflow-hidden border bg-black/60 rounded-2xl border-white/10 animate-pulse"
                   >
-                    <div className="aspect-square bg-gray-800"></div>
+                    <div className="bg-gray-800 aspect-square"></div>
                     <div className="p-4 space-y-3">
-                      <div className="h-5 bg-gray-800 rounded w-2/3"></div>
-                      <div className="h-4 bg-gray-800 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-800 rounded w-full"></div>
-                      <div className="h-10 bg-gray-800 rounded w-full"></div>
+                      <div className="w-2/3 h-5 bg-gray-800 rounded"></div>
+                      <div className="w-1/2 h-4 bg-gray-800 rounded"></div>
+                      <div className="w-full h-4 bg-gray-800 rounded"></div>
+                      <div className="w-full h-10 bg-gray-800 rounded"></div>
                     </div>
                   </div>
                 ))
@@ -653,8 +653,8 @@ export default function MarketplacePage() {
                 <TokenCard key={token.symbol} token={token} index={index} />
               ))
             ) : (
-              <div className="col-span-full text-center py-12">
-                <h3 className="text-xl font-medium mb-2">No tokens found</h3>
+              <div className="py-12 text-center col-span-full">
+                <h3 className="mb-2 text-xl font-medium">No tokens found</h3>
                 <p className="text-muted-foreground">
                   Try adjusting your search or filters
                 </p>
