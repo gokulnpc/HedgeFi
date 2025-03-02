@@ -32,11 +32,35 @@ const auroraTestnet = {
   testnet: true,
 };
 
+// Configure custom Sonic Blaze Testnet
+const sonicBlazeTestnet = {
+  id: 57054,
+  name: "Sonic Blaze Testnet",
+  network: "sonic-blaze-testnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "S",
+    symbol: "S",
+  },
+  rpcUrls: {
+    public: { http: ["https://rpc.blaze.soniclabs.com"] },
+    default: { http: ["https://rpc.blaze.soniclabs.com"] },
+  },
+  blockExplorers: {
+    default: {
+      name: "Sonic Blaze Explorer",
+      url: "https://explorer.blaze.soniclabs.com", // Placeholder, update if needed
+    },
+  },
+  testnet: true,
+};
+
 // Create wagmi config
 const config = createConfig({
-  chains: [auroraTestnet],
+  chains: [auroraTestnet, sonicBlazeTestnet],
   transports: {
     [auroraTestnet.id]: http(),
+    [sonicBlazeTestnet.id]: http(),
   },
 });
 
