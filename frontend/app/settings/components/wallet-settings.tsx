@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Loader2, Wallet } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -18,19 +18,50 @@ export function WalletSettings() {
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [betCredits, setBetCredits] = useState<string>("0");
+  const [isMounted, setIsMounted] = useState(false);
 
   // Fetch bet credits when address changes or component mounts
   const fetchBetCredits = async () => {
-    if (address) {
-      try {
+    if (!isMounted) return;
+
+    try {
+      if (address) {
         const credits = await bettingService.getUserBetCredits(address);
         setBetCredits(ethers.formatEther(credits));
         console.log("Bet credits:", credits);
-      } catch (error) {
-        console.error("Error fetching bet credits:", error);
+      } else {
+        setBetCredits("0");
       }
+    } catch (error) {
+      console.error("Error fetching bet credits:", error);
+      setBetCredits("0");
     }
   };
+
+  // Handle mounting
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Fetch bet credits when mounted and address changes
+  useEffect(() => {
+    if (isMounted) {
+      fetchBetCredits();
+    }
+  }, [address, isMounted]);
+
+  // Return loading state if not mounted
+  if (!isMounted) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleDeposit = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) {

@@ -15,17 +15,38 @@ import {
   Dices,
   Award,
   BarChart,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "../../components/app-layout";
-import { activeBets, pastBets } from "../../bets/data";
 import { BetCard } from "../../bets/bet-card";
 import { BetFilters } from "../../bets/bet-filters";
+import { useBettingService } from "@/services/BettingService";
+import { useAccount } from "wagmi";
+import { ethers } from "ethers";
 
-// Extend the Bet type to include outcome for statistics
-interface Bet {
-  id: string;
+// Interface for bet data from smart contract
+interface ContractBet {
+  id: number;
+  creator: string;
+  amount: bigint;
+  title: string;
+  description: string;
+  category: string;
+  twitterHandle: string;
+  endDate: bigint;
+  initialPoolAmount: bigint;
+  imageURL: string;
+  isClosed: boolean;
+  supportCount: number;
+  againstCount: number;
+  outcome: boolean;
+}
+
+// Interface for bet card display
+interface DisplayBet {
+  id: number;
   title: string;
   image: string;
   category: string;
@@ -37,7 +58,6 @@ interface Bet {
   noProbability: number;
   isResolved?: boolean;
   result?: "yes" | "no";
-  outcome?: "won" | "lost";
 }
 
 export default function MyBetsPage() {
@@ -46,70 +66,144 @@ export default function MyBetsPage() {
   const [activeFilter, setActiveFilter] = useState<
     "all" | "active" | "resolved"
   >("all");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showAuthWarning, setShowAuthWarning] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [bets, setBets] = useState<ContractBet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const bettingService = useBettingService();
+  const { address, isConnected } = useAccount();
 
-  // Check authentication status
+  // Add state for mounted status
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Update useEffect to handle mounting and fetch bets
   useEffect(() => {
-    const savedAuth = localStorage.getItem("isAuthenticated");
-    setIsAuthenticated(savedAuth === "true");
+    let mounted = true;
 
-    // If not authenticated, show warning and redirect after 3 seconds
-    if (savedAuth !== "true") {
-      setShowAuthWarning(true);
-      const timer = setTimeout(() => {
-        router.push("/bets");
-      }, 3000);
+    const fetchBets = async () => {
+      try {
+        if (!isConnected) {
+          router.push("/bets");
+          return;
+        }
 
-      return () => clearTimeout(timer);
-    }
-  }, [router]);
+        setIsLoading(true);
+        const allBets = await bettingService.getAllBets();
 
-  // Filter bets to only show user's bets (for demo, we'll just show a subset)
-  // In a real app, you would filter based on the user's ID
-  const myActiveBets = activeBets.slice(0, 4) as Bet[];
-  const myPastBets = pastBets.slice(0, 6).map((bet) => ({
-    ...bet,
-    outcome: Math.random() > 0.5 ? "won" : "lost", // Mock outcome for demo
-  })) as Bet[];
+        if (mounted) {
+          setBets(allBets);
+          setIsLoading(false);
+          setIsMounted(true);
+        }
+      } catch (error) {
+        console.error("Error fetching bets:", error);
+        if (mounted) {
+          setIsLoading(false);
+          setIsMounted(true);
+        }
+      }
+    };
 
-  // Calculate bet statistics
-  const totalBets = myActiveBets.length + myPastBets.length;
-  const wonBets = myPastBets.filter((bet) => bet.outcome === "won").length;
-  const lostBets = myPastBets.filter((bet) => bet.outcome === "lost").length;
-  const pendingBets = myActiveBets.length;
+    fetchBets();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isConnected, router]); // Remove bettingService from dependencies
+
+  // Filter bets based on user's involvement
+  const myBets = bets.filter(
+    (bet) =>
+      bet.creator.toLowerCase() === address?.toLowerCase() ||
+      bet.twitterHandle.toLowerCase() === address?.toLowerCase()
+  );
+
+  const activeBets = myBets.filter((bet) => !bet.isClosed);
+  const pastBets = myBets.filter((bet) => bet.isClosed);
+
+  // Calculate statistics
+  const totalBets = myBets.length;
+  const wonBets = pastBets.filter((bet) => bet.outcome).length;
+  const lostBets = pastBets.filter((bet) => !bet.outcome).length;
+  const pendingBets = activeBets.length;
   const winRate = totalBets > 0 ? Math.round((wonBets / totalBets) * 100) : 0;
 
-  // Calculate total profit/loss (mock data)
-  const totalProfit = 125.75; // In NEAR tokens
-  const profitTrend = totalProfit >= 0 ? "up" : "down";
+  // Calculate total profit/loss with proper BigInt handling
+  const totalProfit = pastBets.reduce((acc, bet) => {
+    const amount = Number(ethers.formatEther(BigInt(bet.initialPoolAmount)));
+    return acc + (bet.outcome ? amount : -amount);
+  }, 0);
 
   // Filter bets based on search term and category
-  const filteredActiveBets = myActiveBets.filter(
+  const filteredActiveBets = activeBets.filter(
     (bet) =>
       (bet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         bet.category.toLowerCase().includes(searchTerm.toLowerCase())) &&
       (!selectedCategory || bet.category === selectedCategory)
   );
 
-  const filteredPastBets = myPastBets.filter(
+  const filteredPastBets = pastBets.filter(
     (bet) =>
       (bet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         bet.category.toLowerCase().includes(searchTerm.toLowerCase())) &&
       (!selectedCategory || bet.category === selectedCategory)
   );
 
-  // Handle filter change
-  const handleFilterChange = (filter: "all" | "active" | "resolved") => {
-    setActiveFilter(filter);
-  };
-
-  if (showAuthWarning) {
+  // Return loading state until component is mounted
+  if (!isMounted) {
     return (
       <AppLayout>
-        <div className="container max-w-4xl mx-auto px-4 pt-10">
+        <div className="container py-6">
+          <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+            <CardContent className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Update the convertToDisplayBet function to handle dates consistently
+  const convertToDisplayBet = (bet: ContractBet): DisplayBet => {
+    const totalParticipants =
+      Number(bet.supportCount) + Number(bet.againstCount);
+    const yesProbability =
+      totalParticipants > 0
+        ? Number(bet.supportCount) / totalParticipants
+        : 0.5;
+    const noProbability =
+      totalParticipants > 0
+        ? Number(bet.againstCount) / totalParticipants
+        : 0.5;
+
+    // Format the date in UTC to ensure consistency
+    const date = new Date(Number(bet.endDate) * 1000);
+    const endDateISO = date.toISOString();
+
+    // Ensure initialPoolAmount is treated as BigInt
+    const poolAmount = BigInt(bet.initialPoolAmount.toString());
+
+    return {
+      id: bet.id,
+      title: bet.title,
+      image: bet.imageURL,
+      category: bet.category,
+      endDate: endDateISO,
+      totalPool: Number(ethers.formatEther(poolAmount)),
+      yesPool: Number(bet.supportCount),
+      noPool: Number(bet.againstCount),
+      yesProbability: yesProbability * 100,
+      noProbability: noProbability * 100,
+      isResolved: bet.isClosed,
+      result: bet.isClosed ? (bet.outcome ? "yes" : "no") : undefined,
+    };
+  };
+
+  if (!isConnected) {
+    return (
+      <AppLayout>
+        <div className="container py-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -135,6 +229,7 @@ export default function MyBetsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
+          {/* Header section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <h1 className="text-3xl font-bold">
@@ -175,7 +270,7 @@ export default function MyBetsPage() {
             </div>
           </div>
 
-          {/* Betting Statistics */}
+          {/* Statistics Cards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -197,7 +292,7 @@ export default function MyBetsPage() {
                       <div>
                         <div className="text-2xl font-bold">{totalBets}</div>
                         <p className="text-xs text-muted-foreground">
-                          {pendingBets} active, {myPastBets.length} completed
+                          {pendingBets} active, {pastBets.length} completed
                         </p>
                       </div>
                     </div>
@@ -237,7 +332,7 @@ export default function MyBetsPage() {
                 <CardContent>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      {profitTrend === "up" ? (
+                      {totalProfit >= 0 ? (
                         <TrendingUp className="h-8 w-8 mr-3 text-green-400" />
                       ) : (
                         <TrendingDown className="h-8 w-8 mr-3 text-red-400" />
@@ -245,7 +340,7 @@ export default function MyBetsPage() {
                       <div>
                         <div className="text-2xl font-bold">
                           {totalProfit > 0 ? "+" : ""}
-                          {totalProfit.toFixed(2)} NEAR
+                          {totalProfit.toFixed(4)} ETH
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Lifetime profit/loss
@@ -256,11 +351,11 @@ export default function MyBetsPage() {
                 </CardContent>
               </Card>
 
-              {/* Biggest Win Card */}
+              {/* Active Pool Size Card */}
               <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Biggest Win
+                    Active Pool Size
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -268,9 +363,18 @@ export default function MyBetsPage() {
                     <div className="flex items-center">
                       <BarChart className="h-8 w-8 mr-3 text-blue-400" />
                       <div>
-                        <div className="text-2xl font-bold">+45.20 NEAR</div>
+                        <div className="text-2xl font-bold">
+                          {ethers.formatEther(
+                            activeBets.reduce(
+                              (acc, bet) =>
+                                acc + BigInt(bet.initialPoolAmount.toString()),
+                              BigInt(0)
+                            )
+                          )}{" "}
+                          ETH
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          From "BTC to 100K" bet
+                          Total active pool size
                         </p>
                       </div>
                     </div>
@@ -280,6 +384,7 @@ export default function MyBetsPage() {
             </div>
           </motion.div>
 
+          {/* Filters */}
           {showFilters && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -292,7 +397,7 @@ export default function MyBetsPage() {
                   <BetFilters
                     activeFilter={activeFilter}
                     selectedCategory={selectedCategory}
-                    onFilterChange={handleFilterChange}
+                    onFilterChange={setActiveFilter}
                     onCategoryChange={setSelectedCategory}
                   />
                 </CardContent>
@@ -300,6 +405,7 @@ export default function MyBetsPage() {
             </motion.div>
           )}
 
+          {/* Tabs */}
           <Tabs defaultValue="active" className="mb-8">
             <TabsList>
               <TabsTrigger value="active">Active Bets</TabsTrigger>
@@ -308,10 +414,16 @@ export default function MyBetsPage() {
             </TabsList>
 
             <TabsContent value="active" className="mt-6">
-              {filteredActiveBets.length > 0 ? (
+              {isLoading ? (
+                <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : filteredActiveBets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredActiveBets.map((bet) => (
-                    <BetCard key={bet.id} bet={bet} />
+                    <BetCard key={bet.id} bet={convertToDisplayBet(bet)} />
                   ))}
                 </div>
               ) : (
@@ -334,10 +446,16 @@ export default function MyBetsPage() {
             </TabsContent>
 
             <TabsContent value="past" className="mt-6">
-              {filteredPastBets.length > 0 ? (
+              {isLoading ? (
+                <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : filteredPastBets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {filteredPastBets.map((bet) => (
-                    <BetCard key={bet.id} bet={bet} />
+                    <BetCard key={bet.id} bet={convertToDisplayBet(bet)} />
                   ))}
                 </div>
               ) : (
@@ -361,24 +479,46 @@ export default function MyBetsPage() {
             </TabsContent>
 
             <TabsContent value="created" className="mt-6">
-              <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Dices className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-medium mb-2">
-                    No created bets yet
-                  </h3>
-                  <p className="text-muted-foreground text-center max-w-md mb-6">
-                    You haven't created any prediction markets yet. Create your
-                    first prediction market and let others bet on the outcome.
-                  </p>
-                  <Button asChild>
-                    <Link href="/bets/create">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Prediction Market
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              {isLoading ? (
+                <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : myBets.filter(
+                  (bet) => bet.creator.toLowerCase() === address?.toLowerCase()
+                ).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {myBets
+                    .filter(
+                      (bet) =>
+                        bet.creator.toLowerCase() === address?.toLowerCase()
+                    )
+                    .map((bet) => (
+                      <BetCard key={bet.id} bet={convertToDisplayBet(bet)} />
+                    ))}
+                </div>
+              ) : (
+                <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Dices className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-medium mb-2">
+                      No created bets yet
+                    </h3>
+                    <p className="text-muted-foreground text-center max-w-md mb-6">
+                      You haven't created any prediction markets yet. Create
+                      your first prediction market and let others bet on the
+                      outcome.
+                    </p>
+                    <Button asChild>
+                      <Link href="/bets/create">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Prediction Market
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </motion.div>

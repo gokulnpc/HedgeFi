@@ -84,13 +84,18 @@ export async function POST(req: NextRequest) {
 
     const receipt = await tx.wait();
 
+    // Construct the redirect URL with the bet ID
+    const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const betId = receipt.logs[0]?.topics[1]; // Assuming the first log contains the bet ID
+    const redirectUrl = `${baseURL}/bets/place-bet?id=${betId}`;
+
     // Return success response with transaction details
     return NextResponse.json({
       success: true,
       message: "Bet created successfully",
       transactionHash: receipt.hash,
-      betId: receipt.logs[0]?.topics[1], // Assuming the first log contains the bet ID
-      redirectUrl: "/bets", // URL to the bets page
+      betId: betId,
+      redirectUrl: redirectUrl,
     });
   } catch (error: any) {
     console.error("Error creating bet:", error);

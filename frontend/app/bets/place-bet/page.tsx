@@ -31,6 +31,9 @@ export default function PlaceBetPage() {
   const { data: walletClient } = useWalletClient();
   const bettingService = useBettingService();
 
+  // Add mounted state
+  const [isMounted, setIsMounted] = useState(false);
+
   // Bet state
   const [bet, setBet] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,8 +41,15 @@ export default function PlaceBetPage() {
   const [betSide, setBetSide] = useState<"yes" | "no">("yes");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
+  // Handle mounting
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Fetch bet details
   useEffect(() => {
+    if (!isMounted) return;
+
     async function fetchBetDetails() {
       if (!betId) {
         setIsLoading(false);
@@ -123,7 +133,7 @@ export default function PlaceBetPage() {
     }
 
     fetchBetDetails();
-  }, [betId, bettingService, toast]);
+  }, [betId, bettingService, toast, isMounted]);
 
   // Handle placing bet
   const handlePlaceBet = async () => {
@@ -178,6 +188,17 @@ export default function PlaceBetPage() {
       year: "numeric",
     });
   };
+
+  // Return loading state if not mounted
+  if (!isMounted) {
+    return (
+      <AppLayout>
+        <div className="container py-12 flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (isLoading) {
     return (
