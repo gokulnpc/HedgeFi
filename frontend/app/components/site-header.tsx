@@ -78,7 +78,7 @@ export function SiteHeader() {
     (): NavItem[] => [
       { label: "Launch Tokens", href: "/launch", icon: Rocket },
       { label: "Create Bets", href: "/bets/create", icon: Target },
-      { label: "Quick Swap", href: "/swap", icon: LineChart },
+      { label: "Quick Swap", href: "/dashboard/quick-swap", icon: LineChart },
     ],
     []
   );

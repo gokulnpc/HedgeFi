@@ -39,22 +39,64 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
+import {
+  getPriceForTokens,
+  getEstimatedTokensForEth,
+  getEstimatedEthForTokens,
+} from "@/services/memecoin-launchpad";
+import { ethers } from "ethers";
+
+// Define the Token interface to match what's returned by getTokens
+interface Token {
+  token: string;
+  name: string;
+  creator: string;
+  sold: any;
+  raised: any;
+  isOpen: boolean;
+  image: string;
+  description: string;
+}
+
+// Define TokenSale interface to match what's needed for price estimation functions
+interface TokenSale {
+  token: string;
+  name: string;
+  creator: string;
+  sold: any;
+  raised: any;
+  isOpen: boolean;
+  metadataURI: string;
+}
+
+// Define UI token type that includes tokenData which can be null for default tokens
+interface UIToken {
+  symbol: string;
+  name: string;
+  balance: number;
+  icon: string;
+  change24h: string;
+  price: number;
+  tokenData: Token | null;
+}
 
 interface CoinSwapProps {
   symbol: string;
   isAuthenticated: boolean;
   handleTradeAction: () => void;
+  marketplaceTokens?: Token[];
 }
 
 // Define token data with more details
-const tokens = [
+const defaultTokens: UIToken[] = [
   {
-    symbol: "DOGE",
-    name: "Dogecoin",
-    balance: 861.87,
-    icon: "🐶",
-    change24h: "+2.4%",
-    price: 0.18659,
+    symbol: "ETH",
+    name: "Ethereum",
+    balance: 1.2,
+    icon: "Ξ",
+    change24h: "-0.5%",
+    price: 4125,
+    tokenData: null,
   },
   {
     symbol: "USDT",
@@ -63,99 +105,43 @@ const tokens = [
     icon: "💵",
     change24h: "+0.1%",
     price: 1.0,
+    tokenData: null,
   },
-  {
-    symbol: "BTC",
-    name: "Bitcoin",
-    balance: 0.05,
-    icon: "₿",
-    change24h: "+1.8%",
-    price: 61250,
-  },
-  {
-    symbol: "ETH",
-    name: "Ethereum",
-    balance: 1.2,
-    icon: "Ξ",
-    change24h: "-0.5%",
-    price: 4125,
-  },
-  {
-    symbol: "CAKE",
-    name: "PancakeSwap",
-    balance: 18.46,
-    icon: "🍰",
-    change24h: "+5.2%",
-    price: 2.34,
-  },
-  {
-    symbol: "SHELL",
-    name: "Shell Protocol",
-    balance: 1250.45,
-    icon: "🐚",
-    change24h: "+8.7%",
-    price: 0.018,
-  },
-  {
-    symbol: "SOL",
-    name: "Solana",
-    balance: 3.75,
-    icon: "◎",
-    change24h: "+4.3%",
-    price: 175.42,
-  },
-  {
-    symbol: "AVAX",
-    name: "Avalanche",
-    balance: 12.5,
-    icon: "🔺",
-    change24h: "+3.1%",
-    price: 28.75,
-  },
-  {
-    symbol: "MATIC",
-    name: "Polygon",
-    balance: 150.25,
-    icon: "⬡",
-    change24h: "+1.9%",
-    price: 0.58,
-  },
-  {
-    symbol: "LINK",
-    name: "Chainlink",
-    balance: 25.0,
-    icon: "⬡",
-    change24h: "+2.8%",
-    price: 15.23,
-  },
-  {
-    symbol: "UNI",
-    name: "Uniswap",
-    balance: 45.75,
-    icon: "🦄",
-    change24h: "+0.7%",
-    price: 8.45,
-  },
-  {
-    symbol: "AAVE",
-    name: "Aave",
-    balance: 8.2,
-    icon: "👻",
-    change24h: "-1.2%",
-    price: 92.36,
-  },
+  // ... other default tokens
 ];
 
 const CoinSwap = ({
   symbol,
   isAuthenticated,
   handleTradeAction,
+  marketplaceTokens = [],
 }: CoinSwapProps) => {
-  // Find the token that matches the symbol or default to the first token
+  // Convert marketplace tokens to the format needed for the UI
+  const marketplaceTokensFormatted: UIToken[] = marketplaceTokens.map(
+    (token) => ({
+      symbol: token.name.substring(0, 4).toUpperCase(),
+      name: token.name,
+      balance: 0, // User balance would need to be fetched separately
+      icon: "🪙", // Default icon for marketplace tokens
+      change24h: "+0.0%", // This would need to be fetched from an API
+      price: 0.01, // Default price, will be updated dynamically
+      tokenData: token, // Store the original token data for API calls
+    })
+  );
+
+  // Combine ETH with marketplace tokens
+  const tokens: UIToken[] = [
+    ...defaultTokens.filter((t) => t.symbol === "ETH"), // Only keep ETH from default tokens
+    ...marketplaceTokensFormatted,
+  ];
+
+  // Find the token that matches the symbol or default to ETH
   const defaultToken = tokens.find((t) => t.symbol === symbol) || tokens[0];
 
-  const [fromToken, setFromToken] = useState(defaultToken);
-  const [toToken, setToToken] = useState(tokens[1]); // Default to USDT
+  const [fromToken, setFromToken] = useState<UIToken>(defaultToken);
+  const [toToken, setToToken] = useState<UIToken>(
+    marketplaceTokensFormatted[0] || defaultTokens[1]
+  ); // Default to first marketplace token or USDT
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [swapType, setSwapType] = useState("instant");
@@ -168,6 +154,11 @@ const CoinSwap = ({
   const [orderType, setOrderType] = useState("instant");
   const [showSuccess, setShowSuccess] = useState(false);
   const [transactionHash, setTransactionHash] = useState("");
+  const [estimatedPrice, setEstimatedPrice] = useState<string>("0");
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [swapDirection, setSwapDirection] = useState<
+    "ethToToken" | "tokenToEth"
+  >("ethToToken");
   const [recipientAddress, setRecipientAddress] = useState(
     "0xf79DcD66e8bC69dae488c3E0F35e0693815bD7d6"
   );
@@ -183,65 +174,138 @@ const CoinSwap = ({
       token.name.toLowerCase().includes(fromSearchQuery.toLowerCase())
   );
 
-  const filteredToTokens = tokens.filter(
-    (token) =>
-      token.symbol.toLowerCase().includes(toSearchQuery.toLowerCase()) ||
-      token.name.toLowerCase().includes(toSearchQuery.toLowerCase())
-  );
+  // For "To" tokens, only show marketplace tokens when swapping from ETH
+  // When swapping from a marketplace token, only show ETH
+  const filteredToTokens =
+    swapDirection === "ethToToken"
+      ? marketplaceTokensFormatted.filter(
+          (token) =>
+            token.symbol.toLowerCase().includes(toSearchQuery.toLowerCase()) ||
+            token.name.toLowerCase().includes(toSearchQuery.toLowerCase())
+        )
+      : tokens.filter(
+          (token) =>
+            token.symbol === "ETH" &&
+            (token.symbol.toLowerCase().includes(toSearchQuery.toLowerCase()) ||
+              token.name.toLowerCase().includes(toSearchQuery.toLowerCase()))
+        );
 
-  // Mock exchange rates (in a real app, these would come from an API)
-  const getExchangeRate = (from: string, to: string) => {
-    const rates: Record<string, Record<string, number>> = {
-      DOGE: { USDT: 0.18659, BTC: 0.00000304, ETH: 0.00004521 },
-      USDT: { DOGE: 5.36, BTC: 0.000016, ETH: 0.00024 },
-      BTC: { DOGE: 328900, USDT: 61250, ETH: 14.8 },
-      ETH: { DOGE: 22120, USDT: 4125, BTC: 0.0675 },
-      CAKE: { USDT: 2.34, SHELL: 0.0053 },
-      SHELL: { USDT: 0.018, CAKE: 188.67 },
-      SOL: { USDT: 175.42, BTC: 0.00286 },
-      AVAX: { USDT: 28.75, BTC: 0.00047 },
-      MATIC: { USDT: 0.58, BTC: 0.0000095 },
-      LINK: { USDT: 15.23, BTC: 0.00025 },
-      UNI: { USDT: 8.45, BTC: 0.000138 },
-      AAVE: { USDT: 92.36, BTC: 0.00151 },
+  // Update swap direction when tokens change
+  useEffect(() => {
+    if (fromToken.symbol === "ETH") {
+      setSwapDirection("ethToToken");
+    } else {
+      setSwapDirection("tokenToEth");
+      // If we're swapping from token to ETH, ensure the "to" token is ETH
+      const ethToken = tokens.find((t) => t.symbol === "ETH");
+      if (ethToken && toToken.symbol !== "ETH") {
+        setToToken(ethToken);
+      }
+    }
+  }, [fromToken, toToken, tokens]);
+
+  // Calculate price in real-time when amount changes
+  useEffect(() => {
+    const calculatePrice = async () => {
+      if (
+        !fromAmount ||
+        isNaN(parseFloat(fromAmount)) ||
+        parseFloat(fromAmount) <= 0
+      ) {
+        setToAmount("");
+        setEstimatedPrice("0");
+        return;
+      }
+
+      try {
+        setIsCalculating(true);
+
+        // Convert amount to bigint for the API calls
+        const amount = BigInt(Math.floor(parseFloat(fromAmount) * 1e18));
+
+        if (
+          swapDirection === "ethToToken" &&
+          fromToken.symbol === "ETH" &&
+          toToken.tokenData
+        ) {
+          // ETH to Token swap
+          const tokenSale: TokenSale = {
+            token: toToken.tokenData.token,
+            name: toToken.tokenData.name,
+            creator: toToken.tokenData.creator,
+            sold: toToken.tokenData.sold,
+            raised: toToken.tokenData.raised,
+            isOpen: toToken.tokenData.isOpen,
+            metadataURI: "", // This might need to be fetched if required
+          };
+
+          const estimatedTokens = await getEstimatedTokensForEth(
+            tokenSale,
+            amount
+          );
+          const formattedAmount = ethers.formatUnits(estimatedTokens, 18);
+          setToAmount(formattedAmount);
+        } else if (
+          swapDirection === "tokenToEth" &&
+          toToken.symbol === "ETH" &&
+          fromToken.tokenData
+        ) {
+          // Token to ETH swap
+          const tokenSale: TokenSale = {
+            token: fromToken.tokenData.token,
+            name: fromToken.tokenData.name,
+            creator: fromToken.tokenData.creator,
+            sold: fromToken.tokenData.sold,
+            raised: fromToken.tokenData.raised,
+            isOpen: fromToken.tokenData.isOpen,
+            metadataURI: "", // This might need to be fetched if required
+          };
+
+          const estimatedEth = await getEstimatedEthForTokens(
+            tokenSale,
+            amount
+          );
+          const formattedAmount = ethers.formatUnits(estimatedEth, 18);
+          setToAmount(formattedAmount);
+        }
+      } catch (error) {
+        console.error("Error calculating swap price:", error);
+      } finally {
+        setIsCalculating(false);
+      }
     };
 
-    return rates[from]?.[to] || 1;
-  };
+    calculatePrice();
+  }, [fromAmount, fromToken, toToken, swapDirection]);
 
   const handleFromAmountChange = (value: string) => {
     setFromAmount(value);
-    if (value && !isNaN(parseFloat(value))) {
-      const rate = getExchangeRate(fromToken.symbol, toToken.symbol);
-      setToAmount((parseFloat(value) * rate).toFixed(6));
-    } else {
-      setToAmount("");
-    }
+    // Price calculation is handled by the useEffect
   };
 
   const handleToAmountChange = (value: string) => {
     setToAmount(value);
-    if (value && !isNaN(parseFloat(value))) {
-      const rate = getExchangeRate(toToken.symbol, fromToken.symbol);
-      setFromAmount((parseFloat(value) * rate).toFixed(6));
-    } else {
-      setFromAmount("");
-    }
+    // We don't calculate the reverse direction automatically
+    // This would require implementing the reverse calculation
   };
 
   const handleSwapTokens = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
-    setFromAmount(toAmount);
-    setToAmount(fromAmount);
+    // Only allow swapping if it's between ETH and a marketplace token
+    if (
+      (fromToken.symbol === "ETH" && toToken.tokenData) ||
+      (toToken.symbol === "ETH" && fromToken.tokenData)
+    ) {
+      const temp = fromToken;
+      setFromToken(toToken);
+      setToToken(temp);
+      setFromAmount(toAmount);
+      setToAmount(fromAmount);
+    }
   };
 
   const handleMaxClick = () => {
     handleFromAmountChange(fromToken.balance.toString());
   };
-
-  const exchangeRate = getExchangeRate(fromToken.symbol, toToken.symbol);
 
   // Calculate estimated fees and slippage
   const estimatedFee = fromAmount ? parseFloat(fromAmount) * 0.003 : 0;
@@ -609,7 +673,7 @@ const CoinSwap = ({
                       </Tooltip>
                     </TooltipProvider>
                     <div className="text-gray-300">
-                      1 {fromToken.symbol} = {exchangeRate} {toToken.symbol}
+                      1 {fromToken.symbol} = {estimatedPrice} {toToken.symbol}
                     </div>
                   </div>
 
