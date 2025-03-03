@@ -18,7 +18,7 @@ import {
   Brain,
 } from "lucide-react";
 import { SiteHeader } from "@/app/components/site-header";
-import { Footer } from "@/app/components/Footer";
+import { Footer } from "@/app/components/footer";
 import GridBackground from "@/app/components/GridBackground";
 import { Input } from "@/components/ui/input";
 import Marquee from "react-fast-marquee";

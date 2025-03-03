@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { SiteHeader } from "./site-header";
 import { SiteLeftbar } from "./site-leftbar";
-import { Footer } from "./Footer";
+import { Footer } from "./footer";
 import { motion } from "framer-motion";
 
 interface AppLayoutProps {

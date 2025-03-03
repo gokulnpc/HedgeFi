@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { SiteHeader } from "../components/site-header";
-import { Footer } from "../components/Footer";
+import { Footer } from "../components/footer";
 import { Input } from "@/components/ui/input";
 import {
   Search,
