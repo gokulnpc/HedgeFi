@@ -22,6 +22,7 @@ import {
   Brain,
   Pencil,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSearchParams, useParams } from "next/navigation";
@@ -129,6 +130,22 @@ function AIChatbotContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Handle mounting
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Check if we need to start a new chat
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const isNewChat = searchParams.get("new") === "true";
+    if (isNewChat) {
+      startNewChat();
+    }
+  }, [searchParams, isMounted]);
 
   // Type guard for SwapMessageContent
   const isSwapContent = (content: any): content is SwapMessageContent =>
@@ -221,13 +238,6 @@ function AIChatbotContent() {
       });
     },
   });
-
-  // Check if we need to start a new chat
-  useEffect(() => {
-    if (searchParams.get("new") === "true") {
-      startNewChat();
-    }
-  }, [searchParams.get("new"), searchParams.get("t")]);
 
   // Follow-up quick actions based on previous interaction
   const followUpActions = [
@@ -436,6 +446,14 @@ function AIChatbotContent() {
     );
   };
 
+  if (!isMounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="ml-10 mr-10 mx-auto flex flex-col h-[calc(100vh-5rem)] max-h-[calc(100vh-5rem)] pt-12">
       {/* Welcome Section */}
@@ -565,9 +583,8 @@ function AIChatbotContent() {
                         <ThinkingMessage />
                       ) : (
                         <div className="text-sm whitespace-pre-wrap">
-                        {renderMessageContent(message)}
-                      </div>
-            
+                          {renderMessageContent(message)}
+                        </div>
                       )
                     ) : (
                       <div className="text-sm whitespace-pre-wrap">

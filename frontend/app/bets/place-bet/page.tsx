@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/app/components/app-layout";
@@ -24,14 +25,12 @@ import { useBettingService } from "@/services/BettingService";
 import { useWalletClient } from "wagmi";
 import { AlertCircle, Info, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
-export default function PlaceBetPage() {
+function PlaceBetPageContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const betId = searchParams.get("id");
   const { data: walletClient } = useWalletClient();
   const bettingService = useBettingService();
-
-  // Add mounted state
   const [isMounted, setIsMounted] = useState(false);
 
   // Bet state
@@ -189,43 +188,36 @@ export default function PlaceBetPage() {
     });
   };
 
-  // Return loading state if not mounted
   if (!isMounted) {
     return (
-      <AppLayout>
-        <div className="container py-12 flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
+      <div className="container py-12 flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div className="container py-12 flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
+      <div className="container py-12 flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   if (!bet) {
     return (
-      <AppLayout>
-        <div className="container py-12">
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <AlertCircle className="w-16 h-16 text-red-500" />
-            <h2 className="mt-4 text-2xl font-bold">Bet Not Found</h2>
-            <p className="mt-2 text-muted-foreground">
-              The bet you're looking for doesn't exist or is not available.
-            </p>
-            <Link href="/bets">
-              <Button className="mt-6">Back to Bets</Button>
-            </Link>
-          </div>
+      <div className="container py-12">
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <AlertCircle className="w-16 h-16 text-red-500" />
+          <h2 className="mt-4 text-2xl font-bold">Bet Not Found</h2>
+          <p className="mt-2 text-muted-foreground">
+            The bet you're looking for doesn't exist or is not available.
+          </p>
+          <Link href="/bets">
+            <Button className="mt-6">Back to Bets</Button>
+          </Link>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -419,6 +411,22 @@ export default function PlaceBetPage() {
           </div>
         </motion.div>
       </div>
+    </AppLayout>
+  );
+}
+
+export default function PlaceBetPage() {
+  return (
+    <AppLayout>
+      <Suspense
+        fallback={
+          <div className="container py-12 flex items-center justify-center min-h-[60vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        }
+      >
+        <PlaceBetPageContent />
+      </Suspense>
     </AppLayout>
   );
 }
