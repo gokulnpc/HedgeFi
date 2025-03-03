@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.constant.config import SECRET_KEY
 from app.middleware.log import APIGatewayMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+import uvicorn
 #from app.database.database import session_manager
 from contextlib import asynccontextmanager
 
@@ -35,6 +36,8 @@ router_list = [
 
 for router in router_list:
     app.include_router(router=router)
-    
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 #redis_client = Redis.from_url(REDIS_URL, decode_responses=True)
