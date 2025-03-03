@@ -11,47 +11,52 @@ import { useBettingService } from "@/services/BettingService";
 import { ethers } from "ethers";
 
 export function WalletSettings() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting } = useAccount();
   const bettingService = useBettingService();
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [twitterHandle, setTwitterHandle] = useState("");
   const [isDepositing, setIsDepositing] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [betCredits, setBetCredits] = useState<string>("0");
   const [isMounted, setIsMounted] = useState(false);
-
-  // Fetch bet credits when address changes or component mounts
-  const fetchBetCredits = async () => {
-    if (!isMounted) return;
-
-    try {
-      if (address) {
-        const credits = await bettingService.getUserBetCredits(address);
-        setBetCredits(ethers.formatEther(credits));
-        console.log("Bet credits:", credits);
-      } else {
-        setBetCredits("0");
-      }
-    } catch (error) {
-      console.error("Error fetching bet credits:", error);
-      setBetCredits("0");
-    }
-  };
 
   // Handle mounting
   useEffect(() => {
     setIsMounted(true);
+    return () => setIsMounted(false);
   }, []);
 
   // Fetch bet credits when mounted and address changes
   useEffect(() => {
-    if (isMounted) {
-      fetchBetCredits();
-    }
-  }, [address, isMounted]);
+    let mounted = true;
 
-  // Return loading state if not mounted
-  if (!isMounted) {
+    const fetchBetCredits = async () => {
+      if (!isMounted || !address) return;
+
+      try {
+        const credits = await bettingService.getUserBetCredits(address);
+        if (mounted) {
+          setBetCredits(ethers.formatEther(credits));
+        }
+      } catch (error) {
+        console.error("Error fetching bet credits:", error);
+        if (mounted) {
+          setBetCredits("0");
+        }
+      }
+    };
+
+    fetchBetCredits();
+
+    return () => {
+      mounted = false;
+    };
+  }, [address, isMounted, bettingService]);
+
+  // Show loading state during initial hydration or connection
+  if (!isMounted || isConnecting) {
     return (
       <div className="space-y-6">
         <Card className="border-white/10 bg-black/50 backdrop-blur-xl">
@@ -76,7 +81,19 @@ export function WalletSettings() {
         `Successfully deposited ${depositAmount} ETH worth of bet credits`
       );
       setDepositAmount("");
-      await fetchBetCredits(); // Refresh bet credits
+
+      // Refresh bet credits with cleanup
+      const mounted = true;
+      try {
+        if (address) {
+          const credits = await bettingService.getUserBetCredits(address);
+          if (mounted) {
+            setBetCredits(ethers.formatEther(credits));
+          }
+        }
+      } catch (error) {
+        console.error("Error refreshing bet credits:", error);
+      }
     } catch (error: any) {
       console.error("Error depositing funds:", error);
       toast.error(error.message || "Failed to deposit funds");
@@ -98,12 +115,43 @@ export function WalletSettings() {
         `Successfully withdrew ${withdrawAmount} ETH worth of bet credits`
       );
       setWithdrawAmount("");
-      await fetchBetCredits(); // Refresh bet credits
+
+      // Refresh bet credits with cleanup
+      const mounted = true;
+      try {
+        if (address) {
+          const credits = await bettingService.getUserBetCredits(address);
+          if (mounted) {
+            setBetCredits(ethers.formatEther(credits));
+          }
+        }
+      } catch (error) {
+        console.error("Error refreshing bet credits:", error);
+      }
     } catch (error: any) {
       console.error("Error withdrawing funds:", error);
       toast.error(error.message || "Failed to withdraw funds");
     } finally {
       setIsWithdrawing(false);
+    }
+  };
+
+  const handleRegisterTwitter = async () => {
+    if (!twitterHandle) {
+      toast.error("Please enter a valid Twitter handle");
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const tx = await bettingService.registerTwitterHandle(twitterHandle);
+      toast.success(`Successfully registered Twitter handle: ${twitterHandle}`);
+      setTwitterHandle("");
+    } catch (error: any) {
+      console.error("Error registering Twitter handle:", error);
+      toast.error(error.message || "Failed to register Twitter handle");
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -194,6 +242,31 @@ export function WalletSettings() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
                       Withdraw
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">
+                    Register Twitter Handle
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={twitterHandle}
+                      onChange={(e) => setTwitterHandle(e.target.value)}
+                      className="flex-1"
+                      placeholder="@username"
+                    />
+                    <Button
+                      onClick={handleRegisterTwitter}
+                      disabled={isRegistering}
+                      className="whitespace-nowrap"
+                    >
+                      {isRegistering && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Register
                     </Button>
                   </div>
                 </div>

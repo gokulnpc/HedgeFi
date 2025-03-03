@@ -528,7 +528,6 @@ export default function CreateBet() {
                               <FormControl>
                                 <Input
                                   type="number"
-                                  min="0.000001"
                                   step="0.001"
                                   placeholder="1.0"
                                   className="border-white/10"
@@ -553,7 +552,6 @@ export default function CreateBet() {
                               <FormControl>
                                 <Input
                                   type="number"
-                                  min="0.000001"
                                   step="0.001"
                                   placeholder="0.1"
                                   className="border-white/10"
